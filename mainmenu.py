@@ -1,5 +1,16 @@
+import sys
+import cv2 
+import time
+from PyQt5.QtWidgets import (
+    QApplication, QWidget, QPushButton, QVBoxLayout, QLabel, 
+    QHBoxLayout, QStackedWidget
+)
+from PyQt5.QtCore import Qt, QThread, pyqtSignal
+from PyQt5.QtGui import QImage, QPixmap, QFont
+from game1 import Game1Screen
+
 # ----------------------------------------------------------------------
-# 3. 메인 메뉴 화면 (MainMenu)
+# 4. 메인 메뉴 화면 (MainMenu)
 # ----------------------------------------------------------------------
 class MainMenu(QWidget):
     def __init__(self, stacked_widget):
@@ -46,17 +57,5 @@ class MainMenu(QWidget):
         self.setLayout(main_layout)
 
     def game1(self):
-        # 1. 화면 전환
         self.stacked_widget.setCurrentIndex(1)
-        
-        # 2. 웹캠 스트리밍 시작
-        game1_screen = self.stacked_widget.widget(1)
-        game1_screen.start_video_streams()
-        
-        print("1:1 표정 대결 모드 시작 (웹캠 활성화)")
-
-    def game3(self):
-        # 1. 화면 전환
-        self.stacked_widget.setCurrentIndex(1)
-        
-        print("타임어택 모드 시작")
+        self.stacked_widget.widget(1).start_video_streams()
