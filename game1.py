@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer # QTimer 추가
 from PyQt5.QtGui import QImage, QPixmap, QFont
 from compare import calc_similarity 
+from face_recognition import person_to_face
 
 # ----------------------------------------------------------------------
 # 1. 웹캠 스트림 처리를 위한 별도의 QThread
@@ -22,7 +23,7 @@ class VideoThread(QThread):
         self.running = True
         self.width = width
         self.height = height
-        # ✨ 2. 비교할 이모지 파일 이름과 플레이어 인덱스 저장
+        # 2. 비교할 이모지 파일 이름과 플레이어 인덱스 저장
         self.emotion_file = emotion_file
         self.player_index = player_index
 
@@ -203,12 +204,12 @@ class Game1Screen(QWidget):
         
     # 랜덤으로 선택된 이모지 파일명을 받아 QLabel에 표시하는 함수
     def set_required_emotion(self, emotion_file):
-        # ⭐ current_emotion_file 변수에 현재 이모지 파일명을 저장합니다.
+        # current_emotion_file 변수에 현재 이모지 파일명을 저장합니다.
         self.current_emotion_file = emotion_file
         file_path = os.path.join("img/emoji", emotion_file)
 
         pixmap = QPixmap(file_path)
-        # ⭐ 이미지가 로딩되지 않았을 때 디버깅 메시지를 명확히 출력합니다.
+        # 이미지가 로딩되지 않았을 때 디버깅 메시지를 명확히 출력합니다.
         if pixmap.isNull():
             self.emotion_label.setText(f"이미지 없음: {emotion_file}")
             print(f"[Error] Emoji image not found at {file_path}")
@@ -248,7 +249,7 @@ class Game1Screen(QWidget):
     #     elif player_index == 1:
     #         self.player2_video.setPixmap(pixmap)
     
-    # ⭐ 새로 추가/수정: 이미지와 점수를 함께 받아 처리하는 함수
+    # 새로 추가/수정: 이미지와 점수를 함께 받아 처리하는 함수
     def update_image_and_score(self, image, score, player_index):
         """VideoThread로부터 이미지, 정확도 점수, 인덱스를 받아 화면을 업데이트합니다."""
         pixmap = QPixmap.fromImage(image)
@@ -308,7 +309,7 @@ class Game1Screen(QWidget):
         # 2. 모든 스레드 안전하게 종료
         for thread in self.video_threads:
             if thread.isRunning():
-                # ⭐ CRASH FIX: 스레드 종료 전 시그널 연결을 먼저 끊습니다.
+                # CRASH FIX: 스레드 종료 전 시그널 연결을 먼저 끊습니다.
                 try:
                     # VideoThread의 시그널 이름(change_pixmap_score_signal)을 사용하여 연결 해제
                     thread.change_pixmap_score_signal.disconnect(self.update_image_and_score)

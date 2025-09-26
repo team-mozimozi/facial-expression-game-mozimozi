@@ -49,7 +49,7 @@ class AppSwitcher(QMainWindow):
         # 웹캠 스레드 정리
         QApplication.instance().aboutToQuit.connect(self.game1_screen.stop_video_streams)
         
-        # ⭐ CRASH FIX: closeEvent 핸들러를 추가하여 앱 종료 시 안전하게 스레드 종료
+        #  CRASH FIX: closeEvent 핸들러를 추가하여 앱 종료 시 안전하게 스레드 종료
     def closeEvent(self, event):
         """메인 창이 닫힐 때 모든 스레드를 안전하게 종료합니다."""
         print("메인 창 닫힘 감지: 모든 스레드 종료 요청")
@@ -60,6 +60,7 @@ class AppSwitcher(QMainWindow):
             self.game1_screen.stop_video_streams()
             
         event.accept() # 이벤트를 승인하여 창 닫기를 계속 진행합니다.
+    
         
 if __name__ == '__main__':
     app = QApplication(sys.argv)
