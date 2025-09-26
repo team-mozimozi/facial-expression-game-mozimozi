@@ -47,9 +47,9 @@ def face_in_frame(frame):
     else:
         frame = result
         # 테스트 코드
-        cv2.imshow("Detected Face", frame)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        # cv2.imshow("Detected Face", frame)
+        # cv2.waitKey(0)
+        # cv2.destroyAllWindows()
 
         return frame
         
