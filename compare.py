@@ -2,6 +2,7 @@ import mediapipe as mp
 import cv2
 import numpy as np
 import os, re
+import pandas as pd
 
 def extract_blendshape_scores(img):
     """
@@ -54,7 +55,7 @@ def compare_blendshape_scores(blendshape1, blendshape2):
         return 0.0
 
     score_dict1 = {bs.category_name: bs.score for bs in blendshape1}
-    score_dict2 = {bs.category_name: bs.score for bs in blendshape2}
+    score_dict2 = blendshape2
 
     common_keys = set(score_dict1.keys()).intersection(set(score_dict2.keys()))
     # 공통된 표정 특징이 존재하지 않으면 0 % 반환
@@ -74,7 +75,7 @@ def compare_blendshape_scores(blendshape1, blendshape2):
 def emoji_to_csv(emoji_dir, human_dir):
     import csv
     img_paths = os.listdir(emoji_dir)
-    labels = [re.sub(r'(\d+)?(\.\w+)$', '', f) for f in img_paths]
+    labels = [re.sub(r'(\_)(\w+)(\.\w+)$', '', f) for f in img_paths]
     img_paths = [re.sub(r'(\.\w+)$', '', f)+".jpg" for f in img_paths]
     print(img_paths)
     for img_path, label in zip(img_paths, labels):
@@ -82,20 +83,30 @@ def emoji_to_csv(emoji_dir, human_dir):
         blendshape = extract_blendshape_scores(img)
         scores = [bs.score for bs in blendshape]
         if not os.path.exists("faces.csv"):
-            with open("faces.csv", "w", encoding="UTF-8") as file:
+            with open("faces.csv", "w", encoding="UTF-8", newline="") as file:
                 header = [bs.category_name for bs in blendshape]
                 header.extend(["labels"])
                 writer = csv.writer(file)
                 writer.writerow(header)
-        with open("faces.csv", "a", encoding="UTF-8") as file:
+        with open("faces.csv", "a", encoding="UTF-8", newline="") as file:
             writer = csv.writer(file)
-            scores.extend(label)
+            scores.extend([label])
             writer.writerow(scores)
             
+def calc_similarity(face_img, emoji):
+    # 해당 이모지의 표정 특징 값 가져오기
+    features = pd.read_csv('faces.csv')
+    # emoji에서 라벨 분리
+    label = int(re.sub(r'(\_)(\w+)(\.\w+)?$', '', emoji))
+    feature = features[features["labels"] == label].values[0]
+    blend1 = extract_blendshape_scores(face_img)
+    blend2 = {features.keys()[i]: feature[i] for i in range(len(features.keys()))}
+    
+    return compare_blendshape_scores(blend1, blend2)
 
 
 # 테스트 코드. import시 작동하지 않음.
 if __name__ == "__main__":
-    emoji_dir = "img\\emoji"
-    human_dir = "img\\human"
-    emoji_to_csv(emoji_dir, human_dir)
+    img1 = cv2.imread("img/human/13_sleepy.jpg")
+    emoji = "13_sleepy"
+    print(calc_similarity(img1, emoji))
