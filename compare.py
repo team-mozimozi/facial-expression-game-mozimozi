@@ -1,6 +1,7 @@
 import mediapipe as mp
 import cv2
 import numpy as np
+import os, re
 
 def extract_blendshape_scores(img):
     """
@@ -70,12 +71,31 @@ def compare_blendshape_scores(blendshape1, blendshape2):
     similarity = np.clip(dot_product / (magnitude1 * magnitude2), 0, 1) * 100.0
     return similarity
 
+def emoji_to_csv(emoji_dir, human_dir):
+    import csv
+    img_paths = os.listdir(emoji_dir)
+    labels = [re.sub(r'(\d+)?(\.\w+)$', '', f) for f in img_paths]
+    img_paths = [re.sub(r'(\.\w+)$', '', f)+".jpg" for f in img_paths]
+    print(img_paths)
+    for img_path, label in zip(img_paths, labels):
+        img = cv2.imread(os.path.join(human_dir, img_path))
+        blendshape = extract_blendshape_scores(img)
+        scores = [bs.score for bs in blendshape]
+        if not os.path.exists("faces.csv"):
+            with open("faces.csv", "w", encoding="UTF-8") as file:
+                header = [bs.category_name for bs in blendshape]
+                header.extend(["labels"])
+                writer = csv.writer(file)
+                writer.writerow(header)
+        with open("faces.csv", "a", encoding="UTF-8") as file:
+            writer = csv.writer(file)
+            scores.extend(label)
+            writer.writerow(scores)
+            
+
+
 # 테스트 코드. import시 작동하지 않음.
 if __name__ == "__main__":
-    img1_path = "angry01_360.jpg"
-    img2_path = "angry02_360.jpg"
-    image1 = cv2.imread(img1_path)
-    image2 = cv2.imread(img2_path)
-    blendshape1 = extract_blendshape_scores(image1)
-    blendshape2 = extract_blendshape_scores(image2)
-    print(compare_blendshape_scores(blendshape1, blendshape2), "%")
+    emoji_dir = "img\\emoji"
+    human_dir = "img\\human"
+    emoji_to_csv(emoji_dir, human_dir)
