@@ -2,6 +2,7 @@ import mediapipe as mp
 import cv2
 import numpy as np
 import os, re
+import pandas as pd
 
 def extract_blendshape_scores(img):
     """
@@ -10,8 +11,8 @@ def extract_blendshape_scores(img):
         img (np.ndarray): 웹캠의 frame이나 이미지 파일. (H, W, C)
 
     Returns:
-        detection_result.face_blendshapes[0] (list with dict): {특징 이름: 값} 형태의 모든 특징값들을 담은 딕셔너리 리스트
-                                                                만약 받은 사진이 얼굴 사진이 아니라면 None 반환
+        List of dict: {특징 이름: 값} 형태의 모든 특징값들을 담은 딕셔너리 리스트
+                      만약 받은 사진이 얼굴 사진이 아니라면 None 반환
     """
     # 특징을 추출할 mediapipe의 모델 설정 값 가져오기
     baseoptions = mp.tasks.BaseOptions
@@ -42,19 +43,20 @@ def compare_blendshape_scores(blendshape1, blendshape2):
     """
     구한 두 특징점을 비교해 유사도를 반환하는 함수
     Argv:
-        blendshape1, blendshape2 (list with dict): extract_blendshape_score함수로 구한 특징값 리스트
+        blendshape1 (list with dict): extract_blendshape_score함수로 구한 특징값 리스트
+        blendshape2 (dict): csv 파일에서 불러온 blendscore 딕셔너리
 
     Returns:
-        similarity (float): 두 특징점들 사이의 유사도. cosine 유사도 사용.
-                            두 특징값들중 None값이 있거나 공통된 특징이 없을 경우 0 반환
-                            아닐 경우 코사인 유사도를 %단위로 반환.
+        Float: 두 특징점들 사이의 유사도. cosine 유사도 사용.
+               두 특징값들중 None값이 있거나 공통된 특징이 없을 경우 0 반환
+               아닐 경우 코사인 유사도를 %단위로 반환.
     """
     # 두 이미지 중 얼굴 표정이 아닌 이미지가 있다면 0 % 반환
     if blendshape1 is None or blendshape2 is None:
         return 0.0
 
     score_dict1 = {bs.category_name: bs.score for bs in blendshape1}
-    score_dict2 = {bs.category_name: bs.score for bs in blendshape2}
+    score_dict2 = blendshape2
 
     common_keys = set(score_dict1.keys()).intersection(set(score_dict2.keys()))
     # 공통된 표정 특징이 존재하지 않으면 0 % 반환
@@ -74,7 +76,7 @@ def compare_blendshape_scores(blendshape1, blendshape2):
 def emoji_to_csv(emoji_dir, human_dir):
     import csv
     img_paths = os.listdir(emoji_dir)
-    labels = [re.sub(r'(\d+)?(\.\w+)$', '', f) for f in img_paths]
+    labels = [re.sub(r'(\_)(\w+)(\.\w+)$', '', f) for f in img_paths]
     img_paths = [re.sub(r'(\.\w+)$', '', f)+".jpg" for f in img_paths]
     print(img_paths)
     for img_path, label in zip(img_paths, labels):
@@ -82,20 +84,40 @@ def emoji_to_csv(emoji_dir, human_dir):
         blendshape = extract_blendshape_scores(img)
         scores = [bs.score for bs in blendshape]
         if not os.path.exists("faces.csv"):
-            with open("faces.csv", "w", encoding="UTF-8") as file:
+            with open("faces.csv", "w", encoding="UTF-8", newline="") as file:
                 header = [bs.category_name for bs in blendshape]
                 header.extend(["labels"])
                 writer = csv.writer(file)
                 writer.writerow(header)
-        with open("faces.csv", "a", encoding="UTF-8") as file:
+        with open("faces.csv", "a", encoding="UTF-8", newline="") as file:
             writer = csv.writer(file)
-            scores.extend(label)
+            scores.extend([label])
             writer.writerow(scores)
             
+def calc_similarity(face_img, emoji):
+    """
+    잘라낸 얼굴 이미지와 비교할 이모지의 표정 유사도를 구하는 함수
+    Argv:
+        face_img (np.ndarray): 비교할 얼굴 사진
+        emoji (str): 비교할 이모지의 파일 이름.
+                     ex) 15_sullen.png
+
+    Returns:
+        Float: 사진과 이모지 사이의 유사도 값 (%)
+    """
+    # 해당 이모지의 표정 특징 값 가져오기
+    features = pd.read_csv('faces.csv')
+    # emoji에서 라벨 분리
+    label = int(re.sub(r'(\_)(\w+)(\.\w+)?$', '', emoji))
+    feature = features[features["labels"] == label].values[0]
+    blend1 = extract_blendshape_scores(face_img)
+    blend2 = {features.keys()[i]: feature[i] for i in range(len(features.keys()))}
+    
+    return compare_blendshape_scores(blend1, blend2)
 
 
 # 테스트 코드. import시 작동하지 않음.
 if __name__ == "__main__":
-    emoji_dir = "img\\emoji"
-    human_dir = "img\\human"
-    emoji_to_csv(emoji_dir, human_dir)
+    img1 = cv2.imread("img/human/13_sleepy.jpg")
+    emoji = "13_sleepy"
+    print(calc_similarity(img1, emoji))
