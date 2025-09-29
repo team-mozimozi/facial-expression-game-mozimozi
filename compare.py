@@ -15,6 +15,7 @@ def extract_blendshape_scores(img):
                       만약 받은 사진이 얼굴 사진이 아니라면 None 반환
     """
     # 특징을 추출할 mediapipe의 모델 설정 값 가져오기
+    if img is None: return None
     baseoptions = mp.tasks.BaseOptions
     facelandmarker = mp.tasks.vision.FaceLandmarker
     facelandmarkeroptions = mp.tasks.vision.FaceLandmarkerOptions
