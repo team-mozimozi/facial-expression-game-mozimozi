@@ -55,8 +55,6 @@ class AppSwitcher(QMainWindow):
     def closeEvent(self, event):
         """메인 창이 닫힐 때 모든 스레드를 안전하게 종료합니다."""
         print("메인 창 닫힘 감지: 모든 스레드 종료 요청")
-        if hasattr(self.game1_screen, 'stop_video_streams'):
-            self.game1_screen.stop_video_streams()
         
         if hasattr(self.game2_screen, 'stop_video_streams'):
             self.game1_screen.stop_video_streams()
