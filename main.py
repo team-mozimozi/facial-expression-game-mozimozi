@@ -21,9 +21,11 @@ class AppSwitcher(QMainWindow):
         self.init_ui()
 
     def init_ui(self):
+        SCREEN_WIDTH = 1920
+        SCREEN_HEIGHT = 1080
         self.setWindowTitle("PyQt 앱 전환기")
-        self.setGeometry(100, 100, 900, 750)
-
+        self.setWindowFlag(Qt.FramelessWindowHint)
+        self.setGeometry(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
         self.stacked_widget = QStackedWidget()
         
         # 각 화면 인스턴스 생성
