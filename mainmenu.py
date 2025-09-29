@@ -138,7 +138,7 @@ class MainMenu(QWidget):
         self.btn3.clicked.connect(self.game3)
         
         # 우측 하단 버튼 클릭 동작 연결 (추가)
-        self.btn_exit.clicked.connect(lambda: self.button_action("EXIT"))
+        self.btn_exit.clicked.connect(self.exit)
 
     def create_custom_button(self, text, x, y, width, height, font_size=20, border_radius=58, bg_color=BUTTON_COLOR):
         """지정된 속성으로 QPushButton을 생성하고 스타일시트를 설정합니다."""
@@ -199,3 +199,6 @@ class MainMenu(QWidget):
         # Game2Screen에서 start_stream()을 호출하여 웹캠 스트림 시작
         if hasattr(self.stacked_widget.widget(4), 'start_stream'):
             self.stacked_widget.widget(4).start_stream()
+
+    def exit(self):
+        QApplication.quit()

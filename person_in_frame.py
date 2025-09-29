@@ -7,7 +7,6 @@ from matplotlib import pyplot as plt
 def person_in_frame(frame):
 
     model = YOLO("yolov5s.pt")
-    cap = cv2.VideoCapture(0)
 
     # model을 통해 객체 인식
     results = model(frame) # 객체 여러 개 감지될 수 있음
@@ -38,12 +37,9 @@ def person_in_frame(frame):
 
         if target_box is not None:
             print(f"Selected box for crop: {target_box}")
-            result = frame[target_box[1]:target_box[3], target_box[0]:target_box[2]]   # 인식한 객체 박스 크롭
+            result = frame[target_box[1]:target_box[3], target_box[0]:target_box[2], :]   # 인식한 객체 박스 크롭
         else:
-            result = False
+            result = None
     
-        if result is False:
-            return None
-        else:
-            return result
+        return result
         
