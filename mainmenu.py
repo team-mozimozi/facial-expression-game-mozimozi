@@ -77,5 +77,5 @@ class MainMenu(QWidget):
         game2_screen = self.stacked_widget.widget(3)
         if game2_screen:
             #화면 전환 전에 미리 보기 스트리밍 시작
-            game2_screen.start_stream(camera_index=0) 
+            game2_screen.start_stream() 
             self.stacked_widget.setCurrentIndex(3)

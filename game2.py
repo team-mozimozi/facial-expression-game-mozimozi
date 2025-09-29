@@ -165,7 +165,7 @@ class Game2Screen(QWidget):
         pixmap = QPixmap.fromImage(image)
         self.video_label.setPixmap(pixmap)
             
-    def start_stream(self, camera_index):
+    def start_stream(self):
         self.stop_stream()
         
         self.video_thread = EmojiMatchThread(
@@ -209,21 +209,27 @@ class Game2Screen(QWidget):
                 self.get_best_emoji(frame_to_process)
             else:
                 print("Warning: No frame captured to process.")
-                self.start_stream()
         else:
-            print("Warning: Video stream is not running. Start the stream first.")
-    
-            
+            self.start_stream()
+
     def get_best_emoji(self, rgb_image):
+        from compare import extract_blendshape_scores, compare_blendshape_scores
+        import pandas as pd
+        import re
         """캡처된 OpenCV 이미지로 유사도를 계산하고 GUI를 업데이트합니다."""
         best_similarity = 0.0
         best_match_emoji = "0_placeholder.png" 
-        
+        # 해당 이모지의 표정 특징 값 가져오기
+        features = pd.read_csv('faces.csv')
+        # emoji에서 라벨 분리
+        blend1 = extract_blendshape_scores(rgb_image)
         # 유사도 계산 로직
         for emoji_file in self.emotion_files:
             try:
-                # calc_similarity 함수는 rgb_image (OpenCV/NumPy)를 받습니다.
-                similarity = calc_similarity(rgb_image, emoji_file) 
+                label = int(re.sub(r'(\_)(\w+)(\.\w+)?$', '', emoji_file))
+                feature = features[features["labels"] == label].values[0]
+                blend2 = {features.keys()[i]: feature[i] for i in range(len(features.keys()))}
+                similarity = compare_blendshape_scores(blend1, blend2)
                 if similarity > best_similarity:
                     best_similarity = similarity
                     best_match_emoji = emoji_file
