@@ -109,7 +109,7 @@ class Resultscreen(QWidget):
             self.winner_label.setStyleSheet("color: black;")
             
         self.winner_label.setText(self.winner_text)
-
+        
 # ----------------------------------------------------------------------
 # 3. 게임 화면 (Game1Screen)
 # ----------------------------------------------------------------------

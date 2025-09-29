@@ -10,7 +10,7 @@ from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QImage, QPixmap, QFont
 from game1 import Game1Screen,Resultscreen
 from game2 import Game2Screen
-from game3 import Game3Screen
+from game3 import Game3Screen,Result3screen
 from mainmenu  import MainMenu
 
 # ----------------------------------------------------------------------
@@ -35,14 +35,15 @@ class AppSwitcher(QMainWindow):
         self.result_screen = Resultscreen(self.stacked_widget) # game1Result 
         self.game2_screen = Game2Screen(self.stacked_widget)   # game2Screen 인스턴스
         self.game3_screen = Game3Screen(self.stacked_widget)   # game3Screen 인스턴스
-        
+        self.result3_screen = Result3screen(self.stacked_widget)  #game3Result        
         
         # QStackedWidget에 화면 추가 (인덱스 순서)
         self.stacked_widget.addWidget(self.main_menu)         #Index 0
         self.stacked_widget.addWidget(self.game1_screen)      #Index 1
         self.stacked_widget.addWidget(self.result_screen)     #Index 2
         self.stacked_widget.addWidget(self.game2_screen)      #Index 3
-        self.stacked_widget.addWidget(self.game3_screen)      #Index 3
+        self.stacked_widget.addWidget(self.game3_screen)      #Index 4
+        self.stacked_widget.addWidget(self.result3_screen)      #Index 5
         
         
         # 메인 윈도우에 QStackedWidget 설정

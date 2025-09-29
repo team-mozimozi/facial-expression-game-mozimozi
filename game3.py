@@ -70,7 +70,50 @@ class TimeAttackThread(QThread):
     def stop(self):
         self.running = False
         self.wait()
-
+# ----------------------------------------------------------------------
+# 1. 게임 결과창 (Game3Screen)
+# ----------------------------------------------------------------------
+class Result3screen(QWidget):
+    def __init__(self, stacked_widget):
+        super().__init__()
+        self.stacked_widget = stacked_widget
+        
+        self.total_text = " "
+        self.initUI()
+        
+    def initUI(self):
+        self.layout = QVBoxLayout()  
+        self.result_title = QLabel("게임 종료!")
+        
+        self.total_label = QLabel("결과 계산 중...")
+        self.total_label.setFont(QFont('Arial', 30))
+        self.total_label.setAlignment(Qt.AlignCenter)
+        
+        back_to_menu_btn = QPushButton("메인 메뉴로 돌아가기")
+        back_to_menu_btn.setFixedSize(250, 60)
+        back_to_menu_btn.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(0))
+        
+        h_layout = QHBoxLayout()
+        h_layout.addStretch(1)
+        h_layout.addWidget(back_to_menu_btn)
+        h_layout.addStretch(1)
+        
+        self.layout.addWidget(self.result_title)
+        self.layout.addStretch(1)
+        self.layout.addWidget(self.total_label)
+        self.layout.addStretch(2)
+        self.layout.addLayout(h_layout)
+        
+        self.setLayout(self.layout)
+        
+        
+    def set_results3(self, total_score):
+        self.total_text = f" Result!! (total_score: {total_score:.2f}점) "
+        self.total_label.setStyleSheet("color: black;")
+            
+        self.total_label.setText(self.total_text)
+        
+        
 # ----------------------------------------------------------------------
 # 2. 게임 화면 (Game3Screen)
 # ----------------------------------------------------------------------
@@ -97,7 +140,7 @@ class Game3Screen(QWidget):
         self.current_emotion_file = None
         self.total_score = 0
         self.target_similarity = 80.0  # 목표 유사도 (예: 80%)
-        self.total_game_time = 60      # 총 게임 시간 (60초)
+        self.total_game_time = 10      # 총 게임 시간 (60초)
         self.time_left = self.total_game_time
         
         self.game_timer = QTimer(self)
@@ -223,10 +266,15 @@ class Game3Screen(QWidget):
             self.game_timer.stop()
             self.stop_stream()
             self.timer_label.setText("게임 종료!")
-            QMessageBox.information(self, "게임 종료", f"총 점수: {self.total_score}점!")
+            #QMessageBox.information(self, "게임 종료", f"총 점수: {self.total_score}점!")
             
             # 메인 메뉴로 돌아가거나 결과 화면이 있다면 결과 화면으로 전환
-            self.go_to_main_menu()
+            # game3 결과창 load
+            self.stacked_widget.findChild(Result3screen).set_results3(
+                self.total_score
+            )
+            self.stacked_widget.setCurrentIndex(5)
+            
             print("게임 시간이 모두 소진되었습니다.")
 
 
@@ -301,6 +349,13 @@ class Game3Screen(QWidget):
             
         print("타임어택 스트리밍 및 타이머 작동 종료")
 
+    def go_to_result_screen(Qwidget):
+        result_screen = self.stacked_widget.widget(5) 
+        
+        
+        
+        
+        
     def go_to_main_menu(self):
         self.stop_stream()
         self.stacked_widget.setCurrentIndex(0)
