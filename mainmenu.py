@@ -174,12 +174,18 @@ class MainMenu(QWidget):
         self.create_buttons()
 
     def game1(self):
-        """1:1 표정 대결 모드 시작 (Index 1)"""
-        self.stacked_widget.setCurrentIndex(1)
-        # Game1Screen에서 start_video_streams()를 호출하여 웹캠 스트림 시작
-        if hasattr(self.stacked_widget.widget(1), 'start_video_streams'):
-            self.stacked_widget.widget(1).start_video_streams()
+        # Index 1: 1:1 표정 대결
+        # 1. Game1Screen 인스턴스 가져오기 (Index 1)
+        game1_screen = self.stacked_widget.widget(1)
+        
+        # 2. start_video_streams 함수를 호출하여 스트리밍 시작
+        if hasattr(game1_screen, 'start_video_streams'):
+            # 이 부분을 추가/확인해야 합니다
+            game1_screen.start_video_streams()
             
+        # 3. 화면 전환
+        self.stacked_widget.setCurrentIndex(1)
+        
     def game2(self):
         """이모지 매칭 모드 시작 (Index 3)"""
         self.stacked_widget.setCurrentIndex(3)
@@ -188,4 +194,8 @@ class MainMenu(QWidget):
             self.stacked_widget.widget(3).start_stream()
     
     def game3(self):
-        return None
+        """이모지 매칭 모드 시작 (Index 4)"""
+        self.stacked_widget.setCurrentIndex(4)
+        # Game2Screen에서 start_stream()을 호출하여 웹캠 스트림 시작
+        if hasattr(self.stacked_widget.widget(4), 'start_stream'):
+            self.stacked_widget.widget(4).start_stream()
