@@ -10,6 +10,7 @@ from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QImage, QPixmap, QFont
 from game1 import Game1Screen,Resultscreen
 from game2 import Game2Screen
+from game3 import Game3Screen
 from mainmenu  import MainMenu
 
 # ----------------------------------------------------------------------
@@ -33,6 +34,7 @@ class AppSwitcher(QMainWindow):
         self.game1_screen = Game1Screen(self.stacked_widget)   # game1Screen 인스턴스 
         self.result_screen = Resultscreen(self.stacked_widget) # game1Result 
         self.game2_screen = Game2Screen(self.stacked_widget)   # game2Screen 인스턴스
+        self.game3_screen = Game3Screen(self.stacked_widget)   # game3Screen 인스턴스
         
         
         # QStackedWidget에 화면 추가 (인덱스 순서)
@@ -40,6 +42,7 @@ class AppSwitcher(QMainWindow):
         self.stacked_widget.addWidget(self.game1_screen)      #Index 1
         self.stacked_widget.addWidget(self.result_screen)     #Index 2
         self.stacked_widget.addWidget(self.game2_screen)      #Index 3
+        self.stacked_widget.addWidget(self.game3_screen)      #Index 3
         
         
         # 메인 윈도우에 QStackedWidget 설정
@@ -59,8 +62,10 @@ class AppSwitcher(QMainWindow):
             self.game1_screen.stop_video_streams()
         
         if hasattr(self.game2_screen, 'stop_video_streams'):
-            self.game1_screen.stop_video_streams()
-            
+            self.game2_screen.stop_video_streams()
+        
+        if hasattr(self.game3_screen, 'stop_video_streams'):
+            self.game3_screen.stop_video_streams()    
         event.accept() # 이벤트를 승인하여 창 닫기를 계속 진행합니다.
     
         
