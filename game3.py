@@ -27,6 +27,10 @@ class TimeAttackThread(QThread):
         # 비교할 현재 이모지 파일 이름
         self.emotion_file = emotion_file
 
+
+        #self.is_transitioning = False
+        #self.transition_delay_ms = 1000
+
     def set_emotion_file(self, new_emotion_file):
         """실행 중인 스레드의 목표 이모지를 변경합니다."""
         self.emotion_file = new_emotion_file
@@ -135,11 +139,16 @@ class Game3Screen(QWidget):
             ]
         except FileNotFoundError:
             print(f"Error: 이모지 디렉토리 ({self.EMOJI_DIR})를 찾을 수 없습니다. 테스트 이모지 사용.")
-            self.emotion_files = ["0_placeholder.png"]
+            self.emotion_files = ["0_angry.png"]
 
         self.current_emotion_file = None
         self.total_score = 0
-        self.target_similarity = 80.0  # 목표 유사도 (예: 80%)
+        self.target_similarity = 40.0  # 목표 유사도 (예: 80%)
+        
+        self.is_transitioning = False # 이모지 전환 중인지 확인하는 플래그
+        self.transition_delay_ms  = 1000  # 딜레이 시간(1000ms = 1초)
+        
+        
         self.total_game_time = 10      # 총 게임 시간 (60초)
         self.time_left = self.total_game_time
         
@@ -289,17 +298,47 @@ class Game3Screen(QWidget):
         self.current_accuracy.setText(f'현재 유사도: {score: .2f}%')
         
         # 3. 목표 달성 확인 및 다음 이모지로 전환
-        if score >= self.target_similarity:
+        if score >= self.target_similarity and not self.is_transitioning:
+            
+            self.is_transitioning = True
+            
             # 점수 획득
             self.total_score += 1 
             self.score_label.setText(f"획득 점수: {self.total_score}점")
             
+            self.video_label.setStyleSheet("border: 5px solid #0f0;") # 초록색 테두리
+            
+            
+            QTimer.singleShot(self.transition_delay_ms, self.complete_transition)
+        
+            print(f"목표 달성! 점수 {self.total_score}점 획득. 1초 딜레이 시작.")
+
+            
             # 다음 이모지 설정 (새로운 목표)
-            self.set_next_emotion()
+            #self.set_next_emotion()
             
             # 목표 달성 시 시각적 피드백
             self.video_label.setStyleSheet("border: 3px solid #0f0; background-color: black; color: white;")
-            QTimer.singleShot(200, lambda: self.video_label.setStyleSheet("background-color: black; color: white;")) # 0.2초 후 원래대로 복귀
+            QTimer.singleShot(1000, lambda: self.video_label.setStyleSheet("background-color: black; color: white;")) # 0.2초 후 원래대로 복귀
+    
+    
+    def complete_transition(self):
+        """
+        QTimer에 의해 딜레이 시간(1초) 경과 후 호출되어
+        다음 이모지 설정 및 전환 플래그를 해제합니다.
+        """
+        
+        # 1. 다음 이모지 설정 (랜덤 선택 및 TimeAttackThread에 전달)
+        # 이 함수 안에 TimeAttackThread.set_emotion_file 호출 로직이 포함되어 있어야 합니다.
+        self.set_next_emotion() 
+        
+        # 2. 웹캠 피드 스타일 초기화 (테두리 제거)
+        self.video_label.setStyleSheet("border: none;") 
+        
+        # 3. 플래그 해제: 이제 다시 점수 획득을 할 수 있게 됩니다.
+        self.is_transitioning = False
+        
+        print("이모지 전환 완료 및 플래그 해제. 다음 목표 표정 시작.")
 
 
     def start_stream(self):
