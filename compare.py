@@ -15,11 +15,11 @@ def extract_blendshape_scores(img):
         List of dict: {특징 이름: 값} 형태의 모든 특징값들을 담은 딕셔너리 리스트
                       만약 받은 사진이 얼굴 사진이 아니라면 None 반환
     """
-    # 특징을 추출할 mediapipe의 모델 설정 값 가져오기
-    if img is None: return None
+    
     person = person_in_frame(img)
     if person is None: return None
     person = cv2.cvtColor(person, cv2.COLOR_BGR2RGB)
+    # 특징을 추출할 mediapipe의 모델 설정 값 가져오기
     baseoptions = mp.tasks.BaseOptions
     facelandmarker = mp.tasks.vision.FaceLandmarker
     facelandmarkeroptions = mp.tasks.vision.FaceLandmarkerOptions
