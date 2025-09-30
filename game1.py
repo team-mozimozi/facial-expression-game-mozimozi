@@ -34,6 +34,7 @@ class VideoThread(QThread):
             print(f"Error: Could not open camera {self.camera_index}. Check index or availability.")
             self.running = False
             return
+        
             
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
@@ -109,7 +110,7 @@ class Resultscreen(QWidget):
             self.winner_label.setStyleSheet("color: black;")
             
         self.winner_label.setText(self.winner_text)
-
+        
 # ----------------------------------------------------------------------
 # 3. 게임 화면 (Game1Screen)
 # ----------------------------------------------------------------------
@@ -217,7 +218,8 @@ class Game1Screen(QWidget):
             scaled_pixmap = pixmap.scaled(
                 self.emotion_label.size(),
                 Qt.KeepAspectRatio,
-                Qt.SmoothTransformation
+                #Qt.SmoothTransformation
+                Qt.FastTransformation
             )
             self.emotion_label.setPixmap(scaled_pixmap)
         
