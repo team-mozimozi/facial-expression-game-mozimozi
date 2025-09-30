@@ -21,7 +21,7 @@ SCREEN_HEIGHT = 1080
 SCORE_IMAGE = 100
 EMPTY_SCORE_IMAGE = "design/score_empty_heart.png" # 점수가 없을 때 이미지 경로
 FILLED_SCORE_IMAGE = "design/score_filled_heart.png" # 점수가 있을 때 이미지 경로
-EXIT_BUTTON_IMAGE = "design/exit.png" # 종료 버튼 이미지 경로
+EXIT_BUTTON_IMAGE = "design/main.png" # 종료 버튼 이미지 경로
 
 BUTTON_EXIT_WIDTH = 129
 BUTTON_EXIT_HEIGHT = 101
@@ -117,6 +117,7 @@ class Resultscreen(QWidget):
         if not exit_pixmap.isNull():
             back_to_menu_button.setPixmap(exit_pixmap)
             back_to_menu_button.setFixedSize(exit_pixmap.size()) # 이미지 크기에 맞게 설정
+            back_to_menu_button.setFixedSize(250, 60)
         else:
             back_to_menu_button.setText("메인 메뉴로 돌아가기")
             back_to_menu_button.setFixedSize(250, 60) # 기본 크기
