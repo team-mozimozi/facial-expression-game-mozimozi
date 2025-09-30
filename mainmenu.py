@@ -186,7 +186,11 @@ class MainMenu(QWidget):
             self.stacked_widget.widget(3).start_stream()
     
     def game3(self):
-        return None
+        """이모지 매칭 모드 시작 (Index 4)"""
+        self.stacked_widget.setCurrentIndex(4)
+        # Game4Screen에서 start_stream()을 호출하여 웹캠 스트림 시작
+        if hasattr(self.stacked_widget.widget(4), 'start_stream'):
+            self.stacked_widget.widget(4).start_stream()
     
     def exit(self):
         QApplication.quit()
