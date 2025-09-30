@@ -14,8 +14,6 @@ from mainmenu  import MainMenu
 from game1 import VideoThread 
 from compare import calc_similarity 
 
-
-
 class EmojiMatchThread(QThread): # VideoThread가 QThread를 상속한다고 가정
     # QImage만 전송합니다.
     change_pixmap_signal = pyqtSignal(QImage)
