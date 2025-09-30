@@ -1,19 +1,86 @@
-# (기존 import 및 클래스 정의 유지)
 import cv2
 import random
 import os
 from PyQt5.QtWidgets import (
-    QWidget, QPushButton, QVBoxLayout, QLabel, 
+    QWidget, QPushButton, QVBoxLayout, QLabel,
     QHBoxLayout, QGridLayout, QSpacerItem, QSizePolicy, QStackedWidget
 )
-from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer, QSize
-from PyQt5.QtGui import QImage, QPixmap, QFont, QPainter, QPen, QColor, QIcon
+from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer, QSize, QPointF
+from PyQt5.QtGui import QImage, QPixmap, QFont, QPainter, QPen, QColor, QIcon, QPainterPath, QBrush, QCursor, QMouseEvent
 from compare import calc_similarity
 import numpy as np
 from mainmenu import flag
 
+# ======================================================================
+# ⭐ 1. 텍스트 테두리 기능을 위한 사용자 정의 QLabel 클래스 ⭐
+# ======================================================================
+class OutlinedLabel(QLabel):
+    def __init__(self, text, font, fill_color, outline_color, outline_width, alignment=Qt.AlignLeft | Qt.AlignVCenter, parent=None):
+        super().__init__(text, parent)
+        self.setFont(font)
+        self.fill_color = fill_color
+        self.outline_color = outline_color
+        self.outline_width = outline_width
+        self.setAlignment(alignment)
+        # 텍스트 색상을 투명하게 설정하여 QPainter만 사용하도록 함
+        self.setStyleSheet("color: transparent;")
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing) # 부드러운 렌더링
+
+        text = self.text()
+        font = self.font()
+        
+        path = QPainterPath()
+        rect = self.contentsRect()
+        
+        fm = painter.fontMetrics()
+        text_height = fm.height()
+        
+        # 텍스트의 실제 위치를 계산합니다.
+        
+        # Y 위치 계산: QFontMetrics를 사용하여 텍스트 기준선(Baseline) 위치를 찾습니다.
+        # 중앙 정렬: (전체 높이 - 텍스트 높이) / 2 + 텍스트 기준선
+        y = rect.top() + (rect.height() - text_height) // 2 + fm.ascent()
+        
+        # X 위치 계산: 정렬에 따라 조정
+        x = 0
+        if self.alignment() & Qt.AlignLeft:
+             # 스타일시트의 padding-left: 20px를 수동으로 적용할 경우
+             # mode_bar는 padding-left를 스타일시트에서 설정하므로, 여기서 20을 더합니다.
+            if self.objectName() == "mode_bar_label":
+                x = rect.left() + 20
+            else:
+                x = rect.left() 
+        elif self.alignment() & Qt.AlignHCenter:
+            text_width = fm.horizontalAdvance(text)
+            x = rect.left() + (rect.width() - text_width) // 2
+
+        # QPainterPath에 텍스트를 폰트와 함께 추가합니다.
+        path.addText(QPointF(x, y), font, text)
+
+        # 1. 테두리 설정 (QPen)
+        outline_pen = QPen(self.outline_color, self.outline_width)
+        outline_pen.setJoinStyle(Qt.RoundJoin) # 테두리 모서리를 둥글게 처리
+        painter.setPen(outline_pen)
+
+        # 2. 채우기 설정 (QBrush)
+        fill_brush = QBrush(self.fill_color)
+        painter.setBrush(fill_brush)
+
+        # 3. 경로 그리기 (테두리와 채우기 모두 적용)
+        painter.drawPath(path)
+        
+    # QWidget의 sizeHint를 오버라이드하여 레이블의 크기가 텍스트에 맞도록 힌트를 제공
+    def sizeHint(self):
+        # 텍스트 크기에 따라 적절한 크기를 반환 (테두리 두께 고려)
+        return super().sizeHint()
+# ======================================================================
+
+
 # ----------------------------------------------------------------------
-# ClickableLabel 도우미 클래스 (새로 추가)
+# ClickableLabel 도우미 클래스 (수정)
 # ----------------------------------------------------------------------
 class ClickableLabel(QLabel):
     clicked = pyqtSignal()
@@ -21,13 +88,25 @@ class ClickableLabel(QLabel):
     def mousePressEvent(self, event):
         self.clicked.emit()
         super().mousePressEvent(event)
+        
+    # ⭐ [추가] 마우스가 위젯 영역에 들어올 때 호출
+    def enterEvent(self, event: QMouseEvent):
+        # 마우스 포인터를 '손가락' 모양으로 설정
+        self.setCursor(QCursor(Qt.PointingHandCursor))
+        super().enterEvent(event)
+
+    # ⭐ [추가] 마우스가 위젯 영역을 벗어날 때 호출
+    def leaveEvent(self, event: QMouseEvent):
+        # 마우스 포인터를 기본 모양(화살표)으로 되돌림
+        self.unsetCursor() 
+        super().leaveEvent(event)
 
 # ----------------------------------------------------------------------
 # 1. 웹캠 스트림 처리를 위한 별도의 QThread
 # ----------------------------------------------------------------------
 class VideoThread(QThread):
     change_pixmap_score_signal = pyqtSignal(QImage, float, int)
-                                        
+                                            
     # emoji_filename과 player_index를 추가로 받습니다.
     def __init__(self, camera_index, emotion_file, player_index, width=320, height=240):
         super().__init__()
@@ -182,13 +261,29 @@ class Game1Screen(QWidget):
         main_layout.setSpacing(0) 
         
         # 상단 Mode1 바 (유지)
-        mode1_bar = QLabel("MODE1")
-        mode1_bar.setFont(QFont('ARCO', 30, QFont.Bold))
-        mode1_bar.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        mode1_bar.setStyleSheet("background-color: #FFE10A; color: #FF5CA7; padding-left: 20px;")
+        # ⭐ [수정] QLabel -> OutlinedLabel 적용 ⭐
+        # 이전 스타일: background-color: #FFE10A; color: #FF5CA7; padding-left: 20px;
+        mode1_bar_font = QFont('ARCO', 30, QFont.Bold)
+        mode1_bar_fill = QColor("#FF5CA7")
+        mode1_bar_outline = QColor("#FFF0FA")
+        mode1_bar_width = 3.5
+        
+        mode1_bar = OutlinedLabel(
+            "MODE1", 
+            mode1_bar_font, 
+            mode1_bar_fill, 
+            mode1_bar_outline, 
+            mode1_bar_width, 
+            alignment=Qt.AlignLeft | Qt.AlignVCenter,
+            parent=self
+        )
+        mode1_bar.setObjectName("mode_bar_label") # padding-left 처리를 위해 이름 지정
+        mode1_bar.setStyleSheet("background-color: #FFE10A;") 
+        
         mode1_bar.setFixedHeight(85)
         mode1_bar.setFixedWidth(1920) 
         main_layout.addWidget(mode1_bar) 
+        # ⭐ [수정] 끝 ⭐
         
         # 타이틀/메뉴 버튼 레이아웃
         top_h_layout = QHBoxLayout()
@@ -198,19 +293,31 @@ class Game1Screen(QWidget):
         title.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         
         # 타이머 레이블은 여전히 여기서 인스턴스화
-        self.timer_label = QLabel(f"{self.total_game_time}")
-        self.timer_label.setFont(QFont('Jalnan 2', 45))
-        self.timer_label.setAlignment(Qt.AlignCenter)
-        self.timer_label.setStyleSheet("color: black;")
+        # ⭐ [수정] QLabel -> OutlinedLabel 적용 ⭐
+        timer_font = QFont('Jalnan 2', 45)
+        timer_fill = QColor('#0AB9FF') # 초기 색상은 검정
+        timer_outline = QColor('#00A4F3')
+        timer_width = 3.0
+        
+        self.timer_label = OutlinedLabel(
+            f"{self.total_game_time}", 
+            timer_font, 
+            timer_fill, 
+            timer_outline, 
+            timer_width,
+            alignment=Qt.AlignCenter,
+            parent=self
+        )
+        # 이 레이블에는 배경색이나 텍스트 색상을 설정하지 않고 OutlinedLabel에서 처리
+        # self.timer_label.setStyleSheet("color: black;") 
         # ✨ [수정] 초기에는 타이머를 숨깁니다.
         self.timer_label.hide() 
 
         self.back_btn = QPushButton("", self)
         self.back_btn.setGeometry(flag['BUTTON_EXIT_X'], flag['BUTTON_EXIT_Y'],
-                                  flag['BUTTON_EXIT_WIDTH'], flag['BUTTON_EXIT_HEIGHT'])
+                                 flag['BUTTON_EXIT_WIDTH'], flag['BUTTON_EXIT_HEIGHT'])
 
-        # 버튼 색상 및 스타일 설정
-        # 이 스타일은 모든 QPushButton에 기본적으로 적용됩니다.
+        # 버튼 색상 및 스타일 설정 (유지)
         style = f"""
             QPushButton {{
                 background-color: "transparent"; /* 배경색 사용 */
@@ -250,8 +357,7 @@ class Game1Screen(QWidget):
         self.back_btn.setIcon(QIcon(scaled_icon))
         self.back_btn.setIconSize(scaled_icon.size())
 
-        # *** 우측 하단 버튼에 대한 고유 스타일시트 적용 ***
-        # Object Name을 사용하여 기본 QPushButton 스타일을 덮어씁니다.
+        # *** 우측 하단 버튼에 대한 고유 스타일시트 적용 *** (유지)
         unique_style = f"""
             QPushButton#BottomRightIcon {{
                 background-color: transparent; /* 기본 상태: 투명 유지 */
@@ -278,7 +384,7 @@ class Game1Screen(QWidget):
         main_layout.addSpacing(130) 
 
         # ------------------------------------------------------------------
-        # 이모지 레이블 및 오버레이 버튼 설정
+        # 이모지 레이블 및 오버레이 버튼 설정 (유지)
         # ------------------------------------------------------------------
         # 1. 이모지 레이블 설정
         self.emotion_label = QLabel() 
@@ -291,7 +397,7 @@ class Game1Screen(QWidget):
         self.start_overlay_button = ClickableLabel() # ClickableLabel 인스턴스 생성
         self.start_overlay_button.setFixedSize(240, 240)
         self.start_overlay_button.setAlignment(Qt.AlignCenter)
-        
+
         start_game_pixmap = QPixmap("design/start_game.png")
         if not start_game_pixmap.isNull():
             scaled_pixmap = start_game_pixmap.scaled(
@@ -300,13 +406,29 @@ class Game1Screen(QWidget):
                 Qt.SmoothTransformation
             )
             self.start_overlay_button.setPixmap(scaled_pixmap)
+            # 이미지 버튼일 경우의 스타일시트:
+            # ⭐ [수정] 'cursor: pointinghand;' QSS 속성 제거 ⭐
+            self.start_overlay_button.setStyleSheet("""
+                /* ClickableLabel 클래스에서 enterEvent/leaveEvent로 커서 설정 */
+            """)
         else:
             self.start_overlay_button.setText("게임 시작 (이미지 없음)")
-            self.start_overlay_button.setStyleSheet("background-color: #0AB9FF; color: white; border-radius: 10px;") # 대체 스타일
+            # 텍스트 버튼일 경우의 대체 스타일 및 커서 변경 적용
+            # ⭐ [수정] 'cursor: pointinghand;' QSS 속성 제거 ⭐
+            self.start_overlay_button.setStyleSheet("""
+                ClickableLabel {
+                    background-color: #0AB9FF; 
+                    color: white; 
+                    border-radius: 10px;
+                }
+                ClickableLabel:hover {
+                    /* 커서 변경은 enterEvent/leaveEvent에서 처리 */
+                    background-color: #0088CC; /* 호버 시 배경색을 약간 어둡게 변경 (선택 사항) */
+                }
+            """) 
             print("경고: 'design/start_game.png' 이미지를 찾을 수 없습니다. 텍스트 버튼으로 대체.")
 
         self.start_overlay_button.clicked.connect(self.start_game_clicked) # 슬롯 연결
-        
         # 3. 이모지와 오버레이 버튼을 담을 위젯 (Stack)
         self.center_widget = QWidget()
         center_stack_layout = QStackedWidget(self.center_widget) # QStackedWidget을 사용하여 겹치게 처리
@@ -318,16 +440,29 @@ class Game1Screen(QWidget):
         # 하단 레이아웃 (웹캠 1 - 중앙 컨테이너 - 웹캠 2)
         bottom_h_layout = QHBoxLayout()
         
-        # P1 웹캠 및 정확도 (코드 유지)
+        # P1 웹캠 및 정확도 
         player1_v_layout = QVBoxLayout()
-        self.player1_webcam_title = QLabel('PLAYER 1') 
-        self.player1_webcam_title.setFont(QFont('ARCO', 50)) 
+        # ⭐ [수정] QLabel -> OutlinedLabel 적용 ⭐
+        player_title_font = QFont('ARCO', 50)
+        player_title_fill = QColor("#FFD50A")
+        player_title_outline = QColor(0, 0, 0)
+        player_title_width = 3.0
+        
+        self.player1_webcam_title = OutlinedLabel(
+            'PLAYER 1',
+            player_title_font,
+            player_title_fill,
+            player_title_outline,
+            player_title_width,
+            alignment=Qt.AlignCenter,
+            parent=self
+        )
         self.player1_webcam_title.setStyleSheet("""
-            color: #FFD50A;  
+            background-color: transparent;  
             padding-bottom: 8px;
         """)
-        self.player1_webcam_title.setAlignment(Qt.AlignCenter)
         player1_v_layout.addWidget(self.player1_webcam_title) 
+        # ⭐ [수정] 끝 ⭐
         
         self.player1_video = QLabel('웹캠 1 피드')
         self.player1_video.setAlignment(Qt.AlignCenter)
@@ -336,7 +471,7 @@ class Game1Screen(QWidget):
         player1_v_layout.addWidget(self.player1_video)
         
         self.player1_accuracy = QLabel(f'P1 정확도: {self.p1_score: .2f}%')
-        self.player1_accuracy.setFont(QFont('Jalnan Gothic', 25))
+        self.player1_accuracy.setFont(QFont('Jalnan 2', 25))
         self.player1_accuracy.setStyleSheet("background-color: 'transparent'; color: #292E32; padding-top: 20px;")
         self.player1_accuracy.setAlignment(Qt.AlignCenter)
         player1_v_layout.addWidget(self.player1_accuracy)
@@ -352,14 +487,22 @@ class Game1Screen(QWidget):
 
         # P2 웹캠 및 정확도 (코드 유지)
         player2_v_layout = QVBoxLayout()
-        self.player2_webcam_title = QLabel('PLAYER 2')
-        self.player2_webcam_title.setFont(QFont('ARCO', 50)) 
+        # ⭐ [수정] QLabel -> OutlinedLabel 적용 ⭐
+        self.player2_webcam_title = OutlinedLabel(
+            'PLAYER 2',
+            player_title_font,
+            player_title_fill,
+            player_title_outline,
+            player_title_width,
+            alignment=Qt.AlignCenter,
+            parent=self
+        )
         self.player2_webcam_title.setStyleSheet("""
-            color: #FFD50A; 
+            background-color: transparent; 
             padding-bottom: 8px;
         """)
-        self.player2_webcam_title.setAlignment(Qt.AlignCenter)
         player2_v_layout.addWidget(self.player2_webcam_title) 
+        # ⭐ [수정] 끝 ⭐
 
         self.player2_video = QLabel('웹캠 2 피드')
         self.player2_video.setAlignment(Qt.AlignCenter)
@@ -368,7 +511,7 @@ class Game1Screen(QWidget):
         player2_v_layout.addWidget(self.player2_video)
 
         self.player2_accuracy = QLabel(f'P2 정확도: {self.p2_score: .2f}%')
-        self.player2_accuracy.setFont(QFont('Jalnan Gothic', 25))
+        self.player2_accuracy.setFont(QFont('Jalnan 2', 25))
         self.player2_accuracy.setStyleSheet("background-color: 'transparent'; color: #292E32; padding-top: 20px;")
         self.player2_accuracy.setAlignment(Qt.AlignCenter)
         player2_v_layout.addWidget(self.player2_accuracy)
@@ -417,7 +560,7 @@ class Game1Screen(QWidget):
         self.update_score_display()
 
 
-    # 새로운 슬롯: 게임 시작 버튼 클릭 시
+    # 새로운 슬롯: 게임 시작 버튼 클릭 시 (유지)
     def start_game_clicked(self):
         # 1. 게임 시작 오버레이 버튼 숨기기
         self.start_overlay_button.hide()
@@ -425,7 +568,8 @@ class Game1Screen(QWidget):
         self.emotion_label.show() 
         
         self.timer_label.setText(f"{self.total_game_time}")
-        self.timer_label.setStyleSheet("color: #0AB9FF; font-weight: bold;")
+        # ⭐ [수정] OutlinedLabel의 텍스트와 스타일 업데이트
+        # self._update_outlined_label_color(self.timer_label, QColor(10, 185, 255), QColor(255, 255, 255))
         self.timer_label.show() 
         
         # 3. 게임 상태 초기화
@@ -437,7 +581,14 @@ class Game1Screen(QWidget):
         # 4. 첫 라운드 시작
         self.start_next_round()
     
-    # 스코어 이미지 레이블을 생성하고 레이아웃에 추가하는 헬퍼 함수
+    # OutlinedLabel의 색상을 변경하는 헬퍼 함수
+    def _update_outlined_label_color(self, label, fill_color, outline_color):
+        if isinstance(label, OutlinedLabel):
+            label.fill_color = fill_color
+            label.outline_color = outline_color
+            label.repaint() # 변경 사항을 즉시 반영
+    
+    # 스코어 이미지 레이블을 생성하고 레이아웃에 추가하는 헬퍼 함수 (유지)
     def _setup_score_images(self, h_layout, score_image_list):
         for _ in range(self.MAX_ROUNDS):
             score_label = QLabel()
@@ -448,7 +599,7 @@ class Game1Screen(QWidget):
             h_layout.addWidget(score_label)
             h_layout.addSpacing(5) 
             
-    # ✨ P1, P2 점수에 따라 이미지(하트)를 업데이트하는 함수
+    # ✨ P1, P2 점수에 따라 이미지(하트)를 업데이트하는 함수 (유지)
     def update_score_display(self):
         # P1 점수 표시 업데이트
         for i in range(self.MAX_ROUNDS):
@@ -499,7 +650,8 @@ class Game1Screen(QWidget):
             
             # 남은 시간 표시 업데이트
             self.timer_label.setText(f"{self.time_left}")
-            self.timer_label.setStyleSheet("color: #0AB9FF; font-weight: bold;")
+            # ⭐ [수정] OutlinedLabel의 텍스트와 스타일 업데이트
+            # self._update_outlined_label_color(self.timer_label, QColor(10, 185, 255), QColor(255, 255, 255))
                 
             # time_left == 0이 되는 순간 UI 업데이트를 멈춥니다.
             if self.time_left == 0:
@@ -580,7 +732,6 @@ class Game1Screen(QWidget):
                 self.player2_video.setPixmap(pixmap)
                 self.p2_max_similarity = max(self.p2_max_similarity, score)
                 self.player2_accuracy.setText(f'P2 정확도: {self.p2_max_similarity: .2f}%')
-
                         
     # start_video_streams 함수 (유지)
     def start_video_streams(self):
@@ -618,14 +769,15 @@ class Game1Screen(QWidget):
         self.time_left = self.total_game_time
         # ✨ [수정] start_game_clicked에서 타이머를 보이게 했으므로, 여기서는 시간만 설정합니다.
         self.timer_label.setText(f"{self.total_game_time}")
-        self.timer_label.setStyleSheet("color: #0AB9FF; font-weight: bold;")
+        # ⭐ [수정] OutlinedLabel의 텍스트와 스타일 업데이트
+        # self._update_outlined_label_color(self.timer_label, QColor(10, 185, 255), QColor(255, 255, 255))
         
         self.game_timer.start(1000)
         
         print(f"웹캠 스트리밍 및 타이머 작동 시작")
     
 
-    # stop_video_streams 함수
+    # stop_video_streams 함수 (유지)
     def stop_video_streams(self):
         if self.game_timer.isActive():
             self.game_timer.stop()
@@ -652,7 +804,8 @@ class Game1Screen(QWidget):
         self.timer_label.hide() 
         
         self.timer_label.setText(f"{self.total_game_time}")
-        self.timer_label.setStyleSheet("color: black;")
+        # ⭐ [수정] OutlinedLabel의 텍스트와 스타일 업데이트
+        # self._update_outlined_label_color(self.timer_label, QColor(0, 0, 0), QColor(255, 255, 255))
         self.player1_video.setText('웹캠 1 피드')
         self.player2_video.setText('웹캠 2 피드')
         self.player1_video.setPixmap(QPixmap())

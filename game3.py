@@ -143,13 +143,13 @@ class Game3Screen(QWidget):
 
         self.current_emotion_file = None
         self.total_score = 0
-        self.target_similarity = 40.0  # 목표 유사도 (예: 80%)
+        self.target_similarity = 100.0  # 목표 유사도 (예: 80%)
         
         self.is_transitioning = False # 이모지 전환 중인지 확인하는 플래그
         self.transition_delay_ms  = 1000  # 딜레이 시간(1000ms = 1초)
         
         
-        self.total_game_time = 10      # 총 게임 시간 (60초)
+        self.total_game_time = 1000      # 총 게임 시간 (60초)
         self.time_left = self.total_game_time
         
         self.game_timer = QTimer(self)
