@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 
 def person_in_frame(frame):
 
-    model = YOLO("yolov5s.pt")
+    model = YOLO("yolov5n.pt")
 
     # model을 통해 객체 인식
     results = model(frame) # 객체 여러 개 감지될 수 있음
@@ -35,11 +35,11 @@ def person_in_frame(frame):
                 max_area = area
                 target_box = (x1, y1, x2, y2)
 
-        if target_box is not None:
-            print(f"Selected box for crop: {target_box}")
-            result = frame[target_box[1]:target_box[3], target_box[0]:target_box[2], :]   # 인식한 객체 박스 크롭
-        else:
-            result = None
-    
-        return result
+    if target_box is not None:
+        print(f"Selected box for crop: {target_box}")
+        result = frame[target_box[1]:target_box[3], target_box[0]:target_box[2], :]   # 인식한 객체 박스 크롭
+    else:
+        result = None
+
+    return result
         

@@ -6,18 +6,28 @@ from PyQt5.QtWidgets import (
     QWidget, QPushButton, QVBoxLayout, QLabel, 
     QHBoxLayout, QGridLayout, QSpacerItem, QSizePolicy, QStackedWidget
 )
-from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer 
-from PyQt5.QtGui import QImage, QPixmap, QFont, QPainter, QPen, QColor
-from compare import calc_similarity 
+from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer, QSize
+from PyQt5.QtGui import QImage, QPixmap, QFont, QPainter, QPen, QColor, QIcon
+from compare import calc_similarity
+import numpy as np
 
 VIDEO_WIDTH = 500
 VIDEO_HEIGTH = 370
+
+SCREEN_WIDTH = 1920
+SCREEN_HEIGHT = 1080
 
 # ✨ 사용자 요청에 따른 상수 정의
 SCORE_IMAGE = 100
 EMPTY_SCORE_IMAGE = "design/score_empty_heart.png" # 점수가 없을 때 이미지 경로
 FILLED_SCORE_IMAGE = "design/score_filled_heart.png" # 점수가 있을 때 이미지 경로
 EXIT_BUTTON_IMAGE = "design/exit.png" # 종료 버튼 이미지 경로
+
+BUTTON_EXIT_WIDTH = 129
+BUTTON_EXIT_HEIGHT = 101
+BUTTON_EXIT_MARGIN = 20 # 우측 및 하단으로부터의 마진
+BUTTON_EXIT_X = SCREEN_WIDTH - BUTTON_EXIT_WIDTH - BUTTON_EXIT_MARGIN
+BUTTON_EXIT_Y = SCREEN_HEIGHT - BUTTON_EXIT_HEIGHT - BUTTON_EXIT_MARGIN
 
 # ----------------------------------------------------------------------
 # ClickableLabel 도우미 클래스 (새로 추가)
@@ -101,7 +111,7 @@ class Resultscreen(QWidget):
         
         # 🟢 "메인 메뉴로 돌아가기" 버튼을 이미지로 변경 및 위치 조정
         back_to_menu_button = ClickableLabel()
-        back_to_menu_button.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(0))
+        back_to_menu_button.clicked.connect(self.main_menu_button)
         
         exit_pixmap = QPixmap(EXIT_BUTTON_IMAGE)
         if not exit_pixmap.isNull():
@@ -143,6 +153,10 @@ class Resultscreen(QWidget):
             
         self.winner_label.setText(self.winner_text)
 
+    def main_menu_button(self):
+        self.stacked_widget.setCurrentIndex(0)
+        return
+
 # ----------------------------------------------------------------------
 # 3. 게임 화면 (Game1Screen) - 간격 조절 반영 및 스코어보드 추가
 # ----------------------------------------------------------------------
@@ -180,7 +194,7 @@ class Game1Screen(QWidget):
         
     def initUI(self):
         main_layout = QVBoxLayout(self) 
-        main_layout.setContentsMargins(0, 0, 0, 0) 
+        main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0) 
         
         # 상단 Mode1 바 (유지)
@@ -207,27 +221,68 @@ class Game1Screen(QWidget):
         # ✨ [수정] 초기에는 타이머를 숨깁니다.
         self.timer_label.hide() 
 
-        # 🟢 "메뉴로 돌아가기" 버튼을 이미지로 변경
-        self.back_btn = ClickableLabel()
-        self.back_btn.clicked.connect(self.go_to_main_menu)
-        
-        # ✨ [수정] 버튼 고정 크기 정의
-        BUTTON_WIDTH = 220
-        BUTTON_HEIGHT = 80
+        self.back_btn = QPushButton("", self)
+        self.back_btn.setGeometry(BUTTON_EXIT_X, BUTTON_EXIT_Y, BUTTON_EXIT_WIDTH, BUTTON_EXIT_HEIGHT)
 
-        exit_pixmap = QPixmap(EXIT_BUTTON_IMAGE)
-        if not exit_pixmap.isNull():
-            # ✨ [수정] 이미지 크기에 맞추는 대신, 직접 지정한 크기로 고정
-            scaled_pixmap = exit_pixmap.scaled(
-                BUTTON_WIDTH, BUTTON_HEIGHT, Qt.KeepAspectRatio, Qt.SmoothTransformation
-            )
-            self.back_btn.setPixmap(scaled_pixmap)
-            self.back_btn.setFixedSize(BUTTON_WIDTH, BUTTON_HEIGHT) # 고정 크기 사용
-        else:
-            self.back_btn.setText("메뉴로 돌아가기")
-            self.back_btn.setFixedSize(BUTTON_WIDTH, BUTTON_HEIGHT) # 고정 크기 사용
-            self.back_btn.setStyleSheet("background-color: #0AB9FF; color: white; border-radius: 10px; font-size: 16px;") # 텍스트 버튼 스타일 적용
-            print("경고: 'design/exit.png' 이미지를 찾을 수 없습니다. 텍스트 버튼으로 대체.")
+        # 버튼 색상 및 스타일 설정
+        # 이 스타일은 모든 QPushButton에 기본적으로 적용됩니다.
+        style = f"""
+            QPushButton {{
+                background-color: "transparent"; /* 배경색 사용 */
+                color: #343a40;
+                border-radius: 58px; /* 테두리 반경 사용 */
+                font-family: 'Jalnan Gothic', 'Arial', sans-serif;
+                font-size: 20pt; /* 폰트 크기 사용 */
+                font-weight: light;
+            }}
+            QPushButton:hover {{
+                background-color: #8FFF84B3; /* 마우스 오버 시 (메인 버튼 전용) */
+                color: #8f343a40;
+            }}
+            QPushButton:pressed {{
+                background-color: #8FFF84B3; /* 클릭 시 (메인 버튼 전용) */
+                color: #8f343a40;
+            }}
+        """
+        self.back_btn.setStyleSheet(style)
+        # 🟢 "메뉴로 돌아가기" 버튼을 이미지로 변경
+        self.back_btn.clicked.connect(self.go_to_main_menu)
+
+        # *** 우측 하단 버튼 스타일 분리를 위한 고유 이름 설정 ***
+        self.back_btn.setObjectName("BottomRightIcon")
+        
+        # 아이콘 이미지 설정
+        icon_path = EXIT_BUTTON_IMAGE
+        icon_pixmap = QPixmap(icon_path)
+        
+        # QPixmap을 QIcon으로 변환하여 버튼에 설정
+        icon_size = QSize(BUTTON_EXIT_WIDTH - BUTTON_EXIT_MARGIN, BUTTON_EXIT_HEIGHT - BUTTON_EXIT_MARGIN)
+        scaled_icon = icon_pixmap.scaled(
+            icon_size,
+            Qt.KeepAspectRatio,
+            Qt.SmoothTransformation
+        )
+        self.back_btn.setIcon(QIcon(scaled_icon))
+        self.back_btn.setIconSize(scaled_icon.size())
+
+        # *** 우측 하단 버튼에 대한 고유 스타일시트 적용 ***
+        # Object Name을 사용하여 기본 QPushButton 스타일을 덮어씁니다.
+        unique_style = f"""
+            QPushButton#BottomRightIcon {{
+                background-color: transparent; /* 기본 상태: 투명 유지 */
+                border-radius: 20px;
+                border: none;
+                color: transparent; /* 텍스트는 없으므로 투명하게 설정 */
+            }}
+            QPushButton#BottomRightIcon:hover {{
+                background-color: rgba(255, 255, 255, 0.2); /* 마우스 오버 시: 약간의 투명한 흰색 배경 */
+            }}
+            QPushButton#BottomRightIcon:pressed {{
+                background-color: rgba(255, 255, 255, 0.4); /* 클릭 시: 더 진한 투명한 흰색 배경 */
+            }}
+        """
+        # 기존 스타일시트를 덮어쓰고 고유 스타일을 적용합니다.
+        self.back_btn.setStyleSheet(self.back_btn.styleSheet() + unique_style)
         
         top_h_layout.addWidget(title, 1)
         top_h_layout.addStretch(1)
@@ -346,50 +401,28 @@ class Game1Screen(QWidget):
         # 중앙 수직 컨테이너: 타이머 + 이모지/버튼 + 간격
         # ------------------------------------------------------------------
         center_v_layout = QVBoxLayout()
-        
-        # 1. ✨ 수직 여백 추가 (이모지/타이머를 아래로 밀어내기)
-        # 웹캠 피드 높이(VIDEO_HEIGTH)의 절반 정도를 대략 계산하여 간격을 지정하거나 stretch를 사용
         center_v_layout.addSpacing(90) # 남는 공간을 이 위쪽에 할당
-
-        # 1. 타이머 추가
         center_v_layout.addWidget(self.timer_label, alignment=Qt.AlignCenter)
-        
-        # 2. 타이머와 이모지 사이의 간격 추가
         center_v_layout.addSpacing(20)
-
-        # 3. 💡 이모지와 버튼을 담은 Stacked Widget 추가
         center_v_layout.addWidget(self.center_widget, alignment=Qt.AlignCenter)
-
-        # 4. ✨ 하단에 간격 추가 (선택 사항: 원하는 만큼만 여백을 두기 위함)
         center_v_layout.addSpacing(80) # 예시: 50 픽셀 간격
-
-        # 5. 남는 수직 공간은 이모지 아래에 몰아주어 전체 웹캠 영역과 높이를 맞춥니다.
         center_v_layout.addStretch(1) 
         # ------------------------------------------------------------------
-        
-        # bottom_h_layout에 요소들을 순서대로 추가 (유지)
         bottom_h_layout.addStretch(1) 
         bottom_h_layout.addLayout(player1_v_layout)
-
-        # P1 웹캠과 중앙 컨테이너(타이머+이모지) 사이의 고정 간격
         bottom_h_layout.addSpacing(100) 
-        
-        # 중앙 컨테이너 삽입 (타이머와 이모지가 들어있음)
         bottom_h_layout.addLayout(center_v_layout) 
-
-        # 중앙 컨테이너(타이머+이모지)와 P2 웹캠 사이의 고정 간격
         bottom_h_layout.addSpacing(100) 
         
         bottom_h_layout.addLayout(player2_v_layout)
         bottom_h_layout.addStretch(1)
-
         main_layout.addLayout(bottom_h_layout)
         
         # 🟢 종료 버튼을 위한 새로운 하단 레이아웃 추가
         bottom_exit_layout = QHBoxLayout()
         bottom_exit_layout.addStretch(0) # 좌측에 공간 추가
         bottom_exit_layout.addWidget(self.back_btn) # 종료 버튼 추가
-        bottom_exit_layout.addSpacing(5) # 우측 여백
+        bottom_exit_layout.addSpacing(30)
 
         main_layout.addLayout(bottom_exit_layout)
         main_layout.addSpacing(20) # 최하단 여백 추가
@@ -399,15 +432,13 @@ class Game1Screen(QWidget):
         self.update_score_display()
 
 
-    # 🟢 새로운 슬롯: 게임 시작 버튼 클릭 시
+    # 새로운 슬롯: 게임 시작 버튼 클릭 시
     def start_game_clicked(self):
         # 1. 게임 시작 오버레이 버튼 숨기기
         self.start_overlay_button.hide()
-        
         # 2. 이모지 레이블 표시
         self.emotion_label.show() 
         
-        # ✨ [수정] 타이머 레이블 표시 및 초기 시간 설정
         self.timer_label.setText(f"{self.total_game_time}")
         self.timer_label.setStyleSheet("color: #0AB9FF; font-weight: bold;")
         self.timer_label.show() 
@@ -421,7 +452,7 @@ class Game1Screen(QWidget):
         # 4. 첫 라운드 시작
         self.start_next_round()
     
-    # ✨ 스코어 이미지 레이블을 생성하고 레이아웃에 추가하는 헬퍼 함수
+    # 스코어 이미지 레이블을 생성하고 레이아웃에 추가하는 헬퍼 함수
     def _setup_score_images(self, h_layout, score_image_list):
         for _ in range(self.MAX_ROUNDS):
             score_label = QLabel()
@@ -482,13 +513,13 @@ class Game1Screen(QWidget):
             self.time_left -= 1
             
             # 남은 시간 표시 업데이트
-            self.timer_label.setText(f"{self.time_left}") 
+            self.timer_label.setText(f"{self.time_left}")
             self.timer_label.setStyleSheet("color: #0AB9FF; font-weight: bold;")
                 
             # time_left == 0이 되는 순간 UI 업데이트를 멈춥니다.
             if self.time_left == 0:
                 self.game_timer.stop()
-                self.is_game_active = False 
+                self.is_game_active = False
                 
                 # --- 라운드 승패 판정 ---
                 if self.p1_max_similarity == self.p2_max_similarity:
@@ -498,23 +529,24 @@ class Game1Screen(QWidget):
                     if self.p1_max_similarity > self.p2_max_similarity: # 플레이어1 승리
                         self.timer_label.setText("P1 승리!")
                         self.p1_score += 1
+                        if self.p1_score < self.MAX_ROUNDS:
+                            QTimer.singleShot(2000, self.start_next_round)
+
+
                     else: # 플레이어2 승리
                         self.timer_label.setText("P2 승리!")
                         self.p2_score += 1
-
-                    self.update_score_display() 
-                    
-                    QTimer.singleShot(2000, self.start_next_round)
+                        if self.p2_score < self.MAX_ROUNDS:
+                            QTimer.singleShot(2000, self.start_next_round)
+                    self.update_score_display()
 
                 # --- 게임 종료 결정 (3점 선취승) ---
                 if self.p1_score >= self.MAX_ROUNDS or self.p2_score >= self.MAX_ROUNDS:
                     self.timer_label.setText("게임 종료!")
-                    self.stop_video_streams() 
+                    self.stop_video_streams()
                     
-                    # 💡 오버레이 버튼 다시 표시 (다음 게임 준비)
                     self.start_overlay_button.show()
                     self.emotion_label.hide()
-                    # ✨ [수정] 타이머 숨김
                     self.timer_label.hide()
                     
                     result_screen = self.stacked_widget.findChild(Resultscreen)
@@ -522,12 +554,16 @@ class Game1Screen(QWidget):
                         final_p1_score = self.p1_score
                         final_p2_score = self.p2_score
                         result_screen.set_results(final_p1_score, final_p2_score)
-                    
+
                     self.stacked_widget.setCurrentIndex(2)
-                    
-                    # 💡 사용자 요청: 게임 종료 후 점수 이미지를 empty_heart로 초기화
                     self.p1_score = 0
                     self.p2_score = 0
+                    self.p1_max_similarity = 0
+                    self.p2_max_similarity = 0
+                    self.player1_accuracy.setText(f'P1 정확도: {self.p1_score: .2f}%')
+                    self.player2_accuracy.setText(f'P1 정확도: {self.p2_score: .2f}%')
+                    self.player1_video.clear()
+                    self.player2_video.clear()
                     self.update_score_display()
 
     # start_next_round 함수 (유지)
@@ -563,6 +599,7 @@ class Game1Screen(QWidget):
                         
     # start_video_streams 함수 (유지)
     def start_video_streams(self):
+        # 기존 스레드가 실행 중일 수 있으므로 안전하게 중지 및 정리
         self.stop_video_streams()
         self.video_threads = []
         self.p1_max_similarity = 0
@@ -573,8 +610,9 @@ class Game1Screen(QWidget):
             random_emotion_id = random.choice(self.emotion_ids)
             self.set_required_emotion(random_emotion_id)
         
+        # 첫 번째 웹캠 스레드
         thread1 = VideoThread(
-            camera_index=0,
+            camera_index = 0,
             emotion_file = self.current_emotion_file,
             player_index = 0
             )
@@ -582,8 +620,9 @@ class Game1Screen(QWidget):
         thread1.start()
         self.video_threads.append(thread1)
 
+        # 두 번째 웹캠 스레드
         thread2 = VideoThread(
-            camera_index=1,
+            camera_index = 1,
             emotion_file = self.current_emotion_file,
             player_index = 1
             )
@@ -601,7 +640,7 @@ class Game1Screen(QWidget):
         print(f"웹캠 스트리밍 및 타이머 작동 시작")
     
 
-    # stop_video_streams 함수 (유지)
+    # stop_video_streams 함수
     def stop_video_streams(self):
         if self.game_timer.isActive():
             self.game_timer.stop()
@@ -613,8 +652,8 @@ class Game1Screen(QWidget):
                 try:
                     thread.change_pixmap_score_signal.disconnect(self.update_image_and_score)
                 except Exception:
-                    pass 
-                thread.stop() 
+                    pass
+                thread.stop()
         self.video_threads = []
         print("웹캠 스트리밍 및 타이머 작동 종료")
 
@@ -625,7 +664,6 @@ class Game1Screen(QWidget):
         # 💡 메뉴로 돌아갈 때 오버레이 버튼 다시 표시
         self.start_overlay_button.show()
         self.emotion_label.hide() # 이모지 레이블 숨김
-        # ✨ [수정] 메뉴로 돌아갈 때 타이머 숨김
         self.timer_label.hide() 
         
         self.timer_label.setText(f"{self.total_game_time}")
