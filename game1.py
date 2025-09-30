@@ -10,24 +10,7 @@ from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer, QSize
 from PyQt5.QtGui import QImage, QPixmap, QFont, QPainter, QPen, QColor, QIcon
 from compare import calc_similarity
 import numpy as np
-
-VIDEO_WIDTH = 500
-VIDEO_HEIGTH = 370
-
-SCREEN_WIDTH = 1920
-SCREEN_HEIGHT = 1080
-
-# ✨ 사용자 요청에 따른 상수 정의
-SCORE_IMAGE = 100
-EMPTY_SCORE_IMAGE = "design/score_empty_heart.png" # 점수가 없을 때 이미지 경로
-FILLED_SCORE_IMAGE = "design/score_filled_heart.png" # 점수가 있을 때 이미지 경로
-EXIT_BUTTON_IMAGE = "design/main.png" # 종료 버튼 이미지 경로
-
-BUTTON_EXIT_WIDTH = 129
-BUTTON_EXIT_HEIGHT = 101
-BUTTON_EXIT_MARGIN = 20 # 우측 및 하단으로부터의 마진
-BUTTON_EXIT_X = SCREEN_WIDTH - BUTTON_EXIT_WIDTH - BUTTON_EXIT_MARGIN
-BUTTON_EXIT_Y = SCREEN_HEIGHT - BUTTON_EXIT_HEIGHT - BUTTON_EXIT_MARGIN
+from mainmenu import flag
 
 # ----------------------------------------------------------------------
 # ClickableLabel 도우미 클래스 (새로 추가)
@@ -109,11 +92,11 @@ class Resultscreen(QWidget):
         self.winner_label.setFont(QFont('Jalnan 2', 60))
         self.winner_label.setAlignment(Qt.AlignCenter)
         
-        # 🟢 "메인 메뉴로 돌아가기" 버튼을 이미지로 변경 및 위치 조정
+        # "메인 메뉴로 돌아가기" 버튼을 이미지로 변경 및 위치 조정
         back_to_menu_button = ClickableLabel()
         back_to_menu_button.clicked.connect(self.main_menu_button)
         
-        exit_pixmap = QPixmap(EXIT_BUTTON_IMAGE)
+        exit_pixmap = QPixmap(flag['MAIN_BUTTON_IMAGE'])
         if not exit_pixmap.isNull():
             back_to_menu_button.setPixmap(exit_pixmap)
             back_to_menu_button.setFixedSize(exit_pixmap.size()) # 이미지 크기에 맞게 설정
@@ -223,7 +206,8 @@ class Game1Screen(QWidget):
         self.timer_label.hide() 
 
         self.back_btn = QPushButton("", self)
-        self.back_btn.setGeometry(BUTTON_EXIT_X, BUTTON_EXIT_Y, BUTTON_EXIT_WIDTH, BUTTON_EXIT_HEIGHT)
+        self.back_btn.setGeometry(flag['BUTTON_EXIT_X'], flag['BUTTON_EXIT_Y'],
+                                  flag['BUTTON_EXIT_WIDTH'], flag['BUTTON_EXIT_HEIGHT'])
 
         # 버튼 색상 및 스타일 설정
         # 이 스타일은 모든 QPushButton에 기본적으로 적용됩니다.
@@ -253,11 +237,11 @@ class Game1Screen(QWidget):
         self.back_btn.setObjectName("BottomRightIcon")
         
         # 아이콘 이미지 설정
-        icon_path = EXIT_BUTTON_IMAGE
+        icon_path = flag['MAIN_BUTTON_IMAGE']
         icon_pixmap = QPixmap(icon_path)
         
         # QPixmap을 QIcon으로 변환하여 버튼에 설정
-        icon_size = QSize(BUTTON_EXIT_WIDTH - BUTTON_EXIT_MARGIN, BUTTON_EXIT_HEIGHT - BUTTON_EXIT_MARGIN)
+        icon_size = QSize(flag['BUTTON_EXIT_WIDTH'] - flag['BUTTON_EXIT_MARGIN'], flag['BUTTON_EXIT_HEIGHT'] - flag['BUTTON_EXIT_MARGIN'])
         scaled_icon = icon_pixmap.scaled(
             icon_size,
             Qt.KeepAspectRatio,
@@ -347,7 +331,7 @@ class Game1Screen(QWidget):
         
         self.player1_video = QLabel('웹캠 1 피드')
         self.player1_video.setAlignment(Qt.AlignCenter)
-        self.player1_video.setFixedSize(VIDEO_WIDTH, VIDEO_HEIGTH)
+        self.player1_video.setFixedSize(flag['VIDEO_WIDTH'], flag['VIDEO_HEIGHT'])
         self.player1_video.setStyleSheet("background-color: black; color: white;")
         player1_v_layout.addWidget(self.player1_video)
         
@@ -379,7 +363,7 @@ class Game1Screen(QWidget):
 
         self.player2_video = QLabel('웹캠 2 피드')
         self.player2_video.setAlignment(Qt.AlignCenter)
-        self.player2_video.setFixedSize(VIDEO_WIDTH, VIDEO_HEIGTH)
+        self.player2_video.setFixedSize(flag['VIDEO_WIDTH'], flag['VIDEO_HEIGHT'])
         self.player2_video.setStyleSheet("background-color: black; color: white;")
         player2_v_layout.addWidget(self.player2_video)
 
@@ -457,7 +441,7 @@ class Game1Screen(QWidget):
     def _setup_score_images(self, h_layout, score_image_list):
         for _ in range(self.MAX_ROUNDS):
             score_label = QLabel()
-            score_label.setFixedSize(SCORE_IMAGE, SCORE_IMAGE)
+            score_label.setFixedSize(flag['SCORE_IMAGE_SIZE'], flag['SCORE_IMAGE_SIZE'])
             score_label.setAlignment(Qt.AlignCenter)
             h_layout.addSpacing(5) 
             score_image_list.append(score_label)
@@ -468,10 +452,10 @@ class Game1Screen(QWidget):
     def update_score_display(self):
         # P1 점수 표시 업데이트
         for i in range(self.MAX_ROUNDS):
-            pixmap = QPixmap(FILLED_SCORE_IMAGE if i < self.p1_score else EMPTY_SCORE_IMAGE)
+            pixmap = QPixmap(flag['FILLED_SCORE_IMAGE'] if i < self.p1_score else flag['EMPTY_SCORE_IMAGE'])
             if not pixmap.isNull():
                 scaled_pixmap = pixmap.scaled(
-                    SCORE_IMAGE, SCORE_IMAGE, Qt.KeepAspectRatio, Qt.SmoothTransformation
+                    flag['SCORE_IMAGE_SIZE'], flag['SCORE_IMAGE_SIZE'], Qt.KeepAspectRatio, Qt.SmoothTransformation
                 )
                 self.p1_score_images[i].setPixmap(scaled_pixmap)
             else:
@@ -479,10 +463,10 @@ class Game1Screen(QWidget):
 
         # P2 점수 표시 업데이트
         for i in range(self.MAX_ROUNDS):
-            pixmap = QPixmap(FILLED_SCORE_IMAGE if i < self.p2_score else EMPTY_SCORE_IMAGE)
+            pixmap = QPixmap(flag['FILLED_SCORE_IMAGE'] if i < self.p2_score else flag['EMPTY_SCORE_IMAGE'])
             if not pixmap.isNull():
                 scaled_pixmap = pixmap.scaled(
-                    SCORE_IMAGE, SCORE_IMAGE, Qt.KeepAspectRatio, Qt.SmoothTransformation
+                    flag['SCORE_IMAGE_SIZE'], flag['SCORE_IMAGE_SIZE'], Qt.KeepAspectRatio, Qt.SmoothTransformation
                 )
                 self.p2_score_images[i].setPixmap(scaled_pixmap)
             else:
