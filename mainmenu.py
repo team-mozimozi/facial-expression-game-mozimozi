@@ -8,36 +8,37 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QSize
 from PyQt5.QtGui import QImage, QPixmap, QFont, QIcon
 
-# ===============================================
-# 상수 정의
-# ===============================================
-SCREEN_WIDTH = 1920
-SCREEN_HEIGHT = 1080
-BUTTON_WIDTH = 402
-BUTTON_HEIGHT = 410
-BUTTON_COLOR = "transparent"
-BUTTON_LABELS = ["MODE1", "MODE2", "MODE3"]
+flag = {
+    'SCREEN_WIDTH': 1920,
+    'SCREEN_HEIGHT': 1080,
 
-# 버튼의 기준 위치 (1번째 버튼)
-BUTTON1_X = 316
-BUTTON1_Y = 538
+    'VIDEO_WIDTH': 500,
+    'VIDEO_HEIGHT': 370,
 
-# 계산된 버튼 간격 및 위치
-BUTTON_SPACING = 41
-BUTTON2_X = BUTTON1_X + BUTTON_WIDTH + BUTTON_SPACING
-BUTTON3_X = BUTTON2_X + BUTTON_WIDTH + BUTTON_SPACING
+    'BUTTON_WIDTH': 402,
+    'BUTTON_HEIGHT': 410,
+    'BUTTON_COLOR': "transparent",
+    'BUTTON_LABELS': ["MODE1", "MODE2", "MODE3"],
+    'BUTTON1_X': 316,
+    'BUTTON1_Y': 538,
+    'BUTTON_SPACING': 41,
+    'BUTTON2_X': 759, # BUTTON1_X + BUTTON_WIDTH + BUTTON_SPACING
+    'BUTTON3_X': 1202, # BUTTON2_X + BUTTON_WIDTH + BUTTON_SPACING
 
-# 우측 하단 버튼 정의 (추가)
-BUTTON_EXIT_WIDTH = 129
-BUTTON_EXIT_HEIGHT = 101
-BUTTON_EXIT_MARGIN = 20 # 우측 및 하단으로부터의 마진
-BUTTON_EXIT_X = SCREEN_WIDTH - BUTTON_EXIT_WIDTH - BUTTON_EXIT_MARGIN
-BUTTON_EXIT_Y = SCREEN_HEIGHT - BUTTON_EXIT_HEIGHT - BUTTON_EXIT_MARGIN
+    # 우측 하단 버튼 정의 (추가)
+    'BUTTON_EXIT_WIDTH': 129,
+    'BUTTON_EXIT_HEIGHT': 101,
+    'BUTTON_EXIT_MARGIN': 20,
+    'BUTTON_EXIT_X': 1771, # SCREEN_WIDTH - BUTTON_EXIT_WIDTH - BUTTON_EXIT_MARGIN
+    'BUTTON_EXIT_Y': 959, #SCREEN_HEIGHT - BUTTON_EXIT_HEIGHT - BUTTON_EXIT_MARGIN
+    'SCORE_IMAGE_SIZE': 100,
 
-# 이미지 파일 경로 (사용자 환경에 맞게 경로를 수정해야 할 수 있습니다.)
-BACKGROUND_IMAGE_PATH = 'design/page_main.png' 
-# 우측 하단 도움말 아이콘 이미지 경로 (사용자가 실제 경로로 변경해야 합니다.)
-BUTTON_EXIT_IMAGE_PATH = 'design/exit.png'
+    'BACKGROUND_IMAGE_PATH': 'design/page_main.png',
+    'BUTTON_EXIT_IMAGE_PATH': 'design/exit.png',
+    'EMPTY_SCORE_IMAGE': "design/score_empty_heart.png", # 점수가 없을 때 이미지 경로
+    'FILLED_SCORE_IMAGE': "design/score_filled_heart.png", # 점수가 있을 때 이미지 경로
+    'MAIN_BUTTON_IMAGE': "design/main.png" # 메인메뉴 버튼 이미지 경로
+}
 
 # ----------------------------------------------------------------------
 # 4. 메인 메뉴 화면 (MainMenu)
@@ -48,8 +49,8 @@ class MainMenu(QWidget):
         self.stacked_widget = stacked_widget
         # 1. 전체화면 (1920x1080) 설정 및 프레임리스 모드 적용
         self.setWindowFlag(Qt.FramelessWindowHint) 
-        self.setGeometry(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT) 
-        self.setFixedSize(SCREEN_WIDTH, SCREEN_HEIGHT) 
+        self.setGeometry(0, 0, flag['SCREEN_WIDTH'], flag['SCREEN_HEIGHT']) 
+        self.setFixedSize(flag['SCREEN_WIDTH'], flag['SCREEN_HEIGHT']) 
         self.initUI()
     
     def setup_background(self):
@@ -58,15 +59,15 @@ class MainMenu(QWidget):
         """
         self.background_label = QLabel(self)
         
-        pixmap = QPixmap(BACKGROUND_IMAGE_PATH)
+        pixmap = QPixmap(flag['BACKGROUND_IMAGE_PATH'])
         
         # 윈도우 크기에 맞게 이미지 스케일 조정 (꽉 채움)
-        scaled_pixmap = pixmap.scaled(QSize(SCREEN_WIDTH, SCREEN_HEIGHT), 
+        scaled_pixmap = pixmap.scaled(QSize(flag['SCREEN_WIDTH'], flag['SCREEN_HEIGHT']), 
                                      Qt.IgnoreAspectRatio, 
                                      Qt.SmoothTransformation)
         self.background_label.setPixmap(scaled_pixmap)
         
-        self.background_label.setGeometry(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
+        self.background_label.setGeometry(0, 0, flag['SCREEN_WIDTH'], flag['SCREEN_HEIGHT'])
 
     
     def create_buttons(self):
@@ -74,24 +75,27 @@ class MainMenu(QWidget):
         
         # 1. 첫 번째 버튼 (게임 시작)
         self.btn1 = self.create_custom_button(
-            BUTTON_LABELS[0], BUTTON1_X, BUTTON1_Y, BUTTON_WIDTH, BUTTON_HEIGHT, 20, 58, BUTTON_COLOR
+            flag['BUTTON_LABELS'][0], flag['BUTTON1_X'], flag['BUTTON1_Y'],
+            flag['BUTTON_WIDTH'], flag['BUTTON_HEIGHT'], 20, 58, flag['BUTTON_COLOR']
         )
         # 2. 두 번째 버튼 (설정)
         self.btn2 = self.create_custom_button(
-            BUTTON_LABELS[1], BUTTON2_X, BUTTON1_Y, BUTTON_WIDTH, BUTTON_HEIGHT, 20, 58, BUTTON_COLOR
+            flag['BUTTON_LABELS'][1], flag['BUTTON2_X'], flag['BUTTON1_Y'],
+            flag['BUTTON_WIDTH'], flag['BUTTON_HEIGHT'], 20, 58, flag['BUTTON_COLOR']
         )
         # 3. 세 번째 버튼 (종료)
         self.btn3 = self.create_custom_button(
-            BUTTON_LABELS[2], BUTTON3_X, BUTTON1_Y, BUTTON_WIDTH, BUTTON_HEIGHT, 20, 58, BUTTON_COLOR
+            flag['BUTTON_LABELS'][2], flag['BUTTON3_X'], flag['BUTTON1_Y'],
+            flag['BUTTON_WIDTH'], flag['BUTTON_HEIGHT'], 20, 58, flag['BUTTON_COLOR']
         )
 
         # 4. 우측 하단 버튼 (이미지로 대체)
         self.btn_exit = self.create_custom_button(
             "", # 텍스트 대신 아이콘 사용
-            BUTTON_EXIT_X, 
-            BUTTON_EXIT_Y, 
-            BUTTON_EXIT_WIDTH, 
-            BUTTON_EXIT_HEIGHT,
+            flag['BUTTON_EXIT_X'], 
+            flag['BUTTON_EXIT_Y'], 
+            flag['BUTTON_EXIT_WIDTH'], 
+            flag['BUTTON_EXIT_HEIGHT'],
             bg_color="transparent"
         )
         
@@ -99,11 +103,11 @@ class MainMenu(QWidget):
         self.btn_exit.setObjectName("BottomRightIcon")
         
         # 아이콘 이미지 설정
-        icon_path = BUTTON_EXIT_IMAGE_PATH
+        icon_path = flag['BUTTON_EXIT_IMAGE_PATH']
         icon_pixmap = QPixmap(icon_path)
         
         # QPixmap을 QIcon으로 변환하여 버튼에 설정
-        icon_size = QSize(BUTTON_EXIT_WIDTH - 20, BUTTON_EXIT_HEIGHT - 20)
+        icon_size = QSize(flag['BUTTON_EXIT_WIDTH'] - flag['BUTTON_EXIT_MARGIN'], flag['BUTTON_EXIT_HEIGHT'] - flag['BUTTON_EXIT_MARGIN'])
         scaled_icon = icon_pixmap.scaled(
             icon_size,
             Qt.KeepAspectRatio,
@@ -140,7 +144,7 @@ class MainMenu(QWidget):
         # 우측 하단 버튼 클릭 동작 연결 (추가)
         self.btn_exit.clicked.connect(self.exit)
 
-    def create_custom_button(self, text, x, y, width, height, font_size=20, border_radius=58, bg_color=BUTTON_COLOR):
+    def create_custom_button(self, text, x, y, width, height, font_size=20, border_radius=58, bg_color=flag['BUTTON_COLOR']):
         """지정된 속성으로 QPushButton을 생성하고 스타일시트를 설정합니다."""
         button = QPushButton(text, self)
         # 버튼 크기 설정
@@ -174,18 +178,10 @@ class MainMenu(QWidget):
         self.create_buttons()
 
     def game1(self):
-        # Index 1: 1:1 표정 대결
-        # 1. Game1Screen 인스턴스 가져오기 (Index 1)
-        game1_screen = self.stacked_widget.widget(1)
-        
-        # 2. start_video_streams 함수를 호출하여 스트리밍 시작
-        if hasattr(game1_screen, 'start_video_streams'):
-            # 이 부분을 추가/확인해야 합니다
-            game1_screen.start_video_streams()
-            
-        # 3. 화면 전환
+        """1:1 표정 대결 모드 시작 (Index 1)"""
         self.stacked_widget.setCurrentIndex(1)
-        
+
+            
     def game2(self):
         """이모지 매칭 모드 시작 (Index 3)"""
         self.stacked_widget.setCurrentIndex(3)
@@ -196,9 +192,9 @@ class MainMenu(QWidget):
     def game3(self):
         """이모지 매칭 모드 시작 (Index 4)"""
         self.stacked_widget.setCurrentIndex(4)
-        # Game2Screen에서 start_stream()을 호출하여 웹캠 스트림 시작
+        # Game4Screen에서 start_stream()을 호출하여 웹캠 스트림 시작
         if hasattr(self.stacked_widget.widget(4), 'start_stream'):
             self.stacked_widget.widget(4).start_stream()
-
+    
     def exit(self):
         QApplication.quit()
