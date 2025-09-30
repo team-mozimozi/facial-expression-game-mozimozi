@@ -55,7 +55,6 @@ def face_in_frame(frame):
         
 
 def person_to_face(img):
-    img_h, img_w = img.shape[:2]
 
     face_cascade = cv2.CascadeClassifier('./haarcascade_frontalface_default.xml')
 
@@ -79,10 +78,8 @@ def person_to_face(img):
         crop_x2 = min(width, x + w + dw)
         crop_y2 = min(height, y + h + dh)
 
-        cropped_img = img[crop_y1:crop_y2, crop_x1:crop_x2, :]
-        cv2.resize(cropped_img, dst=cropped_img, fx=img_w/(crop_x2 - crop_x1), fy=img_w/(crop_x2 - crop_x1))
-        
-        
+        cropped_img = img[crop_y1:crop_y2, crop_x1:crop_x2]
+
         return cropped_img
     
     # 얼굴이 없는 경우 원본 이미지 반환
