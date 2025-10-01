@@ -163,8 +163,6 @@ class TimeAttackThread(QThread):
         self.running = False
         self.wait()
 
-
-
 # 게임 결과 GUI
 class Result3screen(QWidget):
     def __init__(self, stacked_widget):
@@ -270,7 +268,7 @@ class Game3Screen(QWidget):
         self.transition_delay_ms  = 1000  # 딜레이 시간(1000ms = 1초)
         
         # 총 게임 시간 (60초)
-        self.total_game_time = 5
+        self.total_game_time = 10
         self.time_left = self.total_game_time
         self.game_timer = QTimer(self)
         self.game_timer.timeout.connect(self.update_timer)
@@ -699,11 +697,15 @@ class Game3Screen(QWidget):
     def reset_game_state(self):
         """게임을 시작 전 상태로 되돌립니다."""
         self.game_started = False
-        
-        self.start_button.show()
+        self.total_score = 0
+        self.time_left = self.total_game_time
+
+        if hasattr(self, 'start_button'): # start_button이 있다면
+            self.start_button.show()
         self.emotion_label.hide()
 
-        self.score_label.setText(f"SCORE: {0}점")
+        if hasattr(self, 'score_display'):
+            self.score_display.setText(f"SCORE : {self.total_score}") 
         self.current_accuracy.setText(f'현재 유사도: {0.00: .2f}%')
         self.video_label.setText(f"웹캠 피드 ({flag['VIDEO_WIDTH']}x{flag['VIDEO_HEIGHT']})")
         self.video_label.setPixmap(QPixmap()) # 웹캠 피드 이미지 초기화
