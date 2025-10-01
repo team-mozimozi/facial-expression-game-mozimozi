@@ -12,9 +12,7 @@ from compare import calc_similarity
 import numpy as np
 from mainmenu import flag
 
-# ----------------------------------------------------------------------
-# ClickableLabel 도우미 클래스
-# ----------------------------------------------------------------------
+# ClickableLabel 클래스
 class ClickableLabel(QLabel):
     clicked = pyqtSignal()
 
@@ -22,20 +20,17 @@ class ClickableLabel(QLabel):
         self.clicked.emit()
         super().mousePressEvent(event)
 
-# ----------------------------------------------------------------------
-# 웹캠 스트림 처리를 위한 별도의 QThread
-# ----------------------------------------------------------------------
+# 웹캠 처리를 위한 QThread 클래스
 class VideoThread(QThread):
     change_pixmap_score_signal = pyqtSignal(QImage, float, int)
                                         
-    # emoji_filename과 player_index를 추가로 받습니다.
-    def __init__(self, camera_index, emotion_file, player_index, width=320, height=240):
+    # 비교할 emoji 파일이름과 player_index를 받음
+    def __init__(self, camera_index, emotion_file, player_index, width=flag["VIDEO_WIDTH"], height=flag["VIDEO_HEIGHT"]):
         super().__init__()
         self.camera_index = camera_index 
         self.running = True
-        self.width = 610
-        self.height = 370
-        # 비교할 이모지 파일 이름과 플레이어 인덱스 저장
+        self.width = width
+        self.height = height
         self.emotion_file = emotion_file
         self.player_index = player_index
 
