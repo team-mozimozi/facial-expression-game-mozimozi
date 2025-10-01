@@ -34,6 +34,11 @@ class VideoThread(QThread):
         self.emotion_file = emotion_file
         self.player_index = player_index
 
+        # 추론 프레임 간격 증가
+        self.frame_count = 0
+        self.inference_interval = 3  # 3프레임당 1회 추론
+        self.similarity = 0
+
     def run(self):
         cap = cv2.VideoCapture(self.camera_index)
         
@@ -50,14 +55,17 @@ class VideoThread(QThread):
             if ret:
                 h, w, ch = frame.shape
                 bytes_per_line = ch * w
-                similarity = calc_similarity(frame, self.emotion_file)
+                self.frame_count += 1
+                if self.frame_count % self.inference_interval == 1:
+                    self.similarity = calc_similarity(frame, self.emotion_file)
+                    self.frame_count = 0
                 rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 convert_to_Qt_format = QImage(
                     rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888
                 )
                 p = convert_to_Qt_format.scaled(self.width, self.height, Qt.KeepAspectRatio)
-                self.change_pixmap_score_signal.emit(p, similarity, self.player_index)
-            self.msleep(50)
+                self.change_pixmap_score_signal.emit(p, self.similarity, self.player_index)
+            self.msleep(1)
         
         cap.release()
         
@@ -576,7 +584,21 @@ class Game1Screen(QWidget):
                 self.p2_max_similarity = max(self.p2_max_similarity, score)
                 self.player2_accuracy.setText(f'P2 정확도: {self.p2_max_similarity: .2f}%')
 
-                        
+    def get_available_camera_index(self):
+        """사용 가능한 가장 낮은 인덱스의 웹캠 번호를 반환합니다."""
+        # 0부터 9까지 시도하며, 먼저 열리는 카메라의 인덱스를 반환
+        count = 0
+        idxs = []
+        for index in range(10): 
+            cap = cv2.VideoCapture(index)
+            if cap.isOpened():
+                cap.release()
+                count += 1
+                idxs.append(index) # 성공적인 인덱스 반환
+            if count >= 2:
+                return idxs
+        return [0, 1] # 찾지 못하면 기본값 0 반환
+
     # start_video_streams 함수
     def start_video_streams(self):
         # 기존 스레드가 실행 중일 수 있으므로 안전하게 중지 및 정리
@@ -589,10 +611,10 @@ class Game1Screen(QWidget):
         if self.emotion_ids:
             random_emotion_id = random.choice(self.emotion_ids)
             self.set_required_emotion(random_emotion_id)
-        
+        index = self.get_available_camera_index()
         # 첫 번째 웹캠 스레드
         thread1 = VideoThread(
-            camera_index = 0,
+            camera_index = index[0],
             emotion_file = self.current_emotion_file,
             player_index = 0
             )
@@ -602,7 +624,7 @@ class Game1Screen(QWidget):
 
         # 두 번째 웹캠 스레드
         thread2 = VideoThread(
-            camera_index = 1,
+            camera_index = index[1],
             emotion_file = self.current_emotion_file,
             player_index = 1
             )

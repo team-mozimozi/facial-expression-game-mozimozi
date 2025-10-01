@@ -365,11 +365,22 @@ class Game2Screen(QWidget):
         pixmap = QPixmap.fromImage(image)
         self.video_label.setPixmap(pixmap)
 
+    def get_available_camera_index(self):
+        """사용 가능한 가장 낮은 인덱스의 웹캠 번호를 반환합니다."""
+        # 0부터 9까지 시도하며, 먼저 열리는 카메라의 인덱스를 반환
+        for index in range(10): 
+            cap = cv2.VideoCapture(index)
+            if cap.isOpened():
+                cap.release()
+                print(f"camera {index} available")
+                return index
+        return 0 # 찾지 못하면 기본값 0 반환
+
     def start_stream(self):
         self.stop_stream()
 
         self.video_thread = EmojiMatchThread(
-            camera_index=0,
+            camera_index=self.get_available_camera_index(),
             all_emotion_files=self.emotion_files,
             width=flag['VIDEO_WIDTH'],
             height=flag['VIDEO_HEIGHT']
