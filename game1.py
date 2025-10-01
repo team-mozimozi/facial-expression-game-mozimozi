@@ -62,7 +62,7 @@ class VideoThread(QThread):
                 )
                 p = convert_to_Qt_format.scaled(self.width, self.height, Qt.KeepAspectRatio)
                 self.change_pixmap_score_signal.emit(p, similarity, self.player_index)
-            self.msleep(50)
+            self.msleep(100)
         
         cap.release()
         
@@ -170,7 +170,7 @@ class Game1Screen(QWidget):
         
         self.game_timer = QTimer(self)
         self.game_timer.timeout.connect(self.update_timer)
-        self.total_game_time = 1
+        self.total_game_time = 10       
         self.time_left = self.total_game_time
         self.is_game_active = False
         
