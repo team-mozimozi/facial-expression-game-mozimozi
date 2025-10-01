@@ -115,6 +115,10 @@ class TimeAttackThread(QThread):
         # 비교할 현재 이모지 파일 이름
         self.emotion_file = emotion_file
 
+        self.frame_count = 0
+        self.inference_interval = 3  # 3프레임당 1회 추론
+        self.similarity = 0
+
     def set_emotion_file(self, new_emotion_file):
         """실행 중인 스레드의 목표 이모지를 변경합니다."""
         self.emotion_file = new_emotion_file
@@ -133,8 +137,12 @@ class TimeAttackThread(QThread):
         while self.running:
             ret, frame = cap.read()
             if ret:
-                # 유사도 계산
-                similarity = calc_similarity(frame, self.emotion_file)
+                # 3프레임마다 추론
+                self.frame_count += 1
+                if self.frame_count % self.inference_interval == 1:
+                    # 유사도 계산
+                    self.similarity = calc_similarity(frame, self.emotion_file)
+                    self.frame_count = 0
                 rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 h, w, ch = rgb_image.shape
                 bytes_per_line = ch * w
@@ -145,7 +153,7 @@ class TimeAttackThread(QThread):
                 p = convert_to_Qt_format.scaled(self.width, self.height, Qt.KeepAspectRatio)
                 
                 # 이미지와 유사도 시그널 전송
-                self.change_pixmap_score_signal.emit(p, similarity)
+                self.change_pixmap_score_signal.emit(p, self.similarity)
             self.msleep(50)
         if cap.isOpened():
              cap.release()
@@ -617,6 +625,15 @@ class Game3Screen(QWidget):
         
         print("이모지 전환 완료 및 플래그 해제. 다음 목표 표정 시작.")
 
+    def get_available_camera_index(self):
+        """사용 가능한 가장 낮은 인덱스의 웹캠 번호를 반환합니다."""
+        # 0부터 9까지 시도하며, 먼저 열리는 카메라의 인덱스를 반환
+        for index in range(10): 
+            cap = cv2.VideoCapture(index)
+            if cap.isOpened():
+                cap.release()
+                return index
+        return 0 # 찾지 못하면 기본값 0 반환
 
     def start_stream(self):
         """스트리밍을 시작하고 게임 타이머를 리셋합니다."""
@@ -636,7 +653,7 @@ class Game3Screen(QWidget):
         self.set_next_emotion() 
         
         self.video_thread = TimeAttackThread(
-            camera_index=0, # 타임어택은 1인 모드이므로 보통 0번 카메라 사용
+            camera_index=self.get_available_camera_index(), # 타임어택은 1인 모드이므로 보통 0번 카메라 사용
             emotion_file=self.current_emotion_file,
             width=flag['VIDEO_WIDTH'],
             height=flag['VIDEO_HEIGHT']
