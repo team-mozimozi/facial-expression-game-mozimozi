@@ -106,14 +106,18 @@ def calc_similarity(face_img, emoji):
         Float: 사진과 이모지 사이의 유사도 값 (%)
     """
     # 해당 이모지의 표정 특징 값 가져오기
-    features = pd.read_csv('faces.csv')
-    # emoji에서 라벨 분리
-    label = int(re.sub(r'(\_)(\w+)(\.\w+)?$', '', emoji))
-    feature = features[features["labels"] == label].values[0]
-    blend1 = extract_blendshape_scores(face_img)
-    blend2 = {features.keys()[i]: feature[i] for i in range(len(features.keys()))}
-    
-    return compare_blendshape_scores(blend1, blend2)
+    try:
+
+        features = pd.read_csv('faces.csv')
+        # emoji에서 라벨 분리
+        label = int(re.sub(r'(\_)(\w+)(\.\w+)?$', '', emoji))
+        feature = features[features["labels"] == label].values[0]
+        blend1 = extract_blendshape_scores(face_img)
+        blend2 = {features.keys()[i]: feature[i] for i in range(len(features.keys()))}
+        
+        return compare_blendshape_scores(blend1, blend2)
+    except:
+        return 0
 
 
 # 테스트 코드. import시 작동하지 않음.
