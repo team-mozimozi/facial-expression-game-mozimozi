@@ -28,7 +28,7 @@ class EmojiMatchThread(QThread): # VideoThread가 QThread를 상속한다고 가
         self.height = height
         self.running = True
         
-        # ✨ 수정: current_frame_rgb를 OpenCV/NumPy 포맷으로 저장
+        # current_frame_rgb를 OpenCV/NumPy 포맷으로 저장
         self.current_frame_rgb = None 
         
     def stop(self):
@@ -52,7 +52,7 @@ class EmojiMatchThread(QThread): # VideoThread가 QThread를 상속한다고 가
             if ret:
                 rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 
-                # ✨ 업데이트: QImage가 아닌 NumPy 배열(OpenCV RGB 프레임)을 저장
+                # QImage가 아닌 NumPy 배열(OpenCV RGB 프레임)을 저장
                 self.current_frame_rgb = rgb_image.copy() 
                 
                 h, w, ch = rgb_image.shape
@@ -95,7 +95,6 @@ class Game2Screen(QWidget):
         self.initUI()
         
     def initUI(self):
-        # ... (상단 레이아웃 및 기타 설정은 기존과 동일)
         main_layout = QVBoxLayout()
         
         # 상단 레이아웃
@@ -198,13 +197,13 @@ class Game2Screen(QWidget):
     def capture_and_match(self):
         """버튼 클릭 시 스트리밍을 멈추고 최종 프레임으로 유사도 계산을 수행합니다."""
         if self.video_thread and self.video_thread.isRunning():
-            # 1. 현재 스레드의 프레임 데이터 (OpenCV/NumPy) 가져오기
+            # 현재 스레드의 프레임 데이터 (OpenCV/NumPy) 가져오기
             frame_to_process = self.video_thread.current_frame_rgb
             
-            # 2. 스레드 멈추기
+            # 스레드 멈추기
             self.stop_stream()
             
-            # 3. 가져온 프레임이 유효하면 이모지 매칭 실행
+            # 가져온 프레임이 유효하면 이모지 매칭 실행
             if frame_to_process is not None:
                 self.get_best_emoji(frame_to_process)
             else:
@@ -243,7 +242,7 @@ class Game2Screen(QWidget):
         h, w, ch = rgb_image.shape
         bytes_per_line = ch * w
         
-        # 데이터 복사 없이 QImage 생성 (효율적)
+        # 데이터 복사 없이 QImage 생성
         q_img = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888)
         
         # 비디오 레이블 크기에 맞게 조정
@@ -252,7 +251,7 @@ class Game2Screen(QWidget):
         )
         self.video_label.setPixmap(QPixmap.fromImage(p))
         
-        # 2. 추천 이모지 이미지 업데이트
+        # 추천 이모지 이미지 업데이트
         file_path = os.path.join("img/emoji", best_match_emoji)
         pixmap_emoji = QPixmap(file_path)
         if not pixmap_emoji.isNull():
@@ -263,6 +262,6 @@ class Game2Screen(QWidget):
             )
             self.emoji_image.setPixmap(scaled_pixmap)
             
-        # 3. 유사도 텍스트 업데이트
+        # 유사도 텍스트 업데이트
         self.similarity_label.setText(f'유사도: {best_similarity: .2f}%')
         
