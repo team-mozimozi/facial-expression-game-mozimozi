@@ -37,7 +37,6 @@ class AppSwitcher(QMainWindow):
         self.game3_screen = Game3Screen(self.stacked_widget)   # game2Screen 인스턴스
         self.result3_screen = Result3screen(self.stacked_widget)   # game2Screen 인스턴스
         
-        
         # QStackedWidget에 화면 추가 (인덱스 순서)
         self.stacked_widget.addWidget(self.main_menu)         #Index 0
         self.stacked_widget.addWidget(self.game1_screen)      #Index 1

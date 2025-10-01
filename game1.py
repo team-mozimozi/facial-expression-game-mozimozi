@@ -12,9 +12,7 @@ from compare import calc_similarity
 import numpy as np
 from mainmenu import flag
 
-# ----------------------------------------------------------------------
-# ClickableLabel 도우미 클래스 (새로 추가)
-# ----------------------------------------------------------------------
+# ClickableLabel 클래스
 class ClickableLabel(QLabel):
     clicked = pyqtSignal()
 
@@ -22,20 +20,17 @@ class ClickableLabel(QLabel):
         self.clicked.emit()
         super().mousePressEvent(event)
 
-# ----------------------------------------------------------------------
-# 1. 웹캠 스트림 처리를 위한 별도의 QThread
-# ----------------------------------------------------------------------
+# 웹캠 처리를 위한 QThread 클래스
 class VideoThread(QThread):
     change_pixmap_score_signal = pyqtSignal(QImage, float, int)
                                         
-    # emoji_filename과 player_index를 추가로 받습니다.
-    def __init__(self, camera_index, emotion_file, player_index, width=320, height=240):
+    # 비교할 emoji 파일이름과 player_index를 받음
+    def __init__(self, camera_index, emotion_file, player_index, width=flag["VIDEO_WIDTH"], height=flag["VIDEO_HEIGHT"]):
         super().__init__()
         self.camera_index = camera_index 
         self.running = True
-        self.width = 610
-        self.height = 370
-        # ✨ 2. 비교할 이모지 파일 이름과 플레이어 인덱스 저장
+        self.width = width
+        self.height = height
         self.emotion_file = emotion_file
         self.player_index = player_index
 
@@ -53,16 +48,16 @@ class VideoThread(QThread):
         while self.running:
             ret, frame = cap.read()
             if ret:
-                rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                h, w, ch = rgb_image.shape
+                h, w, ch = frame.shape
                 bytes_per_line = ch * w
-                similarity = calc_similarity(rgb_image, self.emotion_file)
+                similarity = calc_similarity(frame, self.emotion_file)
+                rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 convert_to_Qt_format = QImage(
                     rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888
                 )
                 p = convert_to_Qt_format.scaled(self.width, self.height, Qt.KeepAspectRatio)
                 self.change_pixmap_score_signal.emit(p, similarity, self.player_index)
-            self.msleep(100)
+            self.msleep(50)
         
         cap.release()
         
@@ -162,26 +157,26 @@ class Game1Screen(QWidget):
         self.p2_max_similarity = 0.0
         self.round = 0 
         
-        # ✨ 새로운 이미지 스코어보드 레이블 리스트 초기화
+        # 새로운 이미지 스코어보드 레이블 리스트 초기화
         self.p1_score_images = []
         self.p2_score_images = []
-        # ✨ 최대 라운드 수 (점수 이미지 개수) 정의
+        # 최대 라운드 수 (점수 이미지 개수) 정의
         self.MAX_ROUNDS = 3 # 3점 선취승을 의미
         
         self.game_timer = QTimer(self)
         self.game_timer.timeout.connect(self.update_timer)
-        self.total_game_time = 10       
+        self.total_game_time = 10
         self.time_left = self.total_game_time
         self.is_game_active = False
         
         self.initUI()
         
     def initUI(self):
-        main_layout = QVBoxLayout(self) 
+        main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0) 
         
-        # 상단 Mode1 바 (유지)
+        # 상단 Mode1 바
         mode1_bar = QLabel("MODE1")
         mode1_bar.setFont(QFont('ARCO', 30, QFont.Bold))
         mode1_bar.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
@@ -202,7 +197,7 @@ class Game1Screen(QWidget):
         self.timer_label.setFont(QFont('Jalnan 2', 45))
         self.timer_label.setAlignment(Qt.AlignCenter)
         self.timer_label.setStyleSheet("color: black;")
-        # ✨ [수정] 초기에는 타이머를 숨깁니다.
+        # 초기에는 타이머를 숨깁니다.
         self.timer_label.hide() 
 
         self.back_btn = QPushButton("", self)
@@ -230,7 +225,7 @@ class Game1Screen(QWidget):
             }}
         """
         self.back_btn.setStyleSheet(style)
-        # 🟢 "메뉴로 돌아가기" 버튼을 이미지로 변경
+        # "메뉴로 돌아가기" 버튼을 이미지로 변경
         self.back_btn.clicked.connect(self.go_to_main_menu)
 
         # *** 우측 하단 버튼 스타일 분리를 위한 고유 이름 설정 ***
@@ -271,7 +266,7 @@ class Game1Screen(QWidget):
         
         top_h_layout.addWidget(title, 1)
         top_h_layout.addStretch(1)
-        # 🟢 top_h_layout에서 back_btn을 제거하고, 별도의 하단 레이아웃으로 옮기기 위해 잠시 주석 처리
+        # top_h_layout에서 back_btn을 제거하고, 별도의 하단 레이아웃으로 옮기기 위해 잠시 주석 처리
         # top_h_layout.addWidget(self.back_btn, 0) 
         main_layout.addLayout(top_h_layout)
         
@@ -280,14 +275,14 @@ class Game1Screen(QWidget):
         # ------------------------------------------------------------------
         # 이모지 레이블 및 오버레이 버튼 설정
         # ------------------------------------------------------------------
-        # 1. 이모지 레이블 설정
+        # 이모지 레이블 설정
         self.emotion_label = QLabel() 
         self.emotion_label.setAlignment(Qt.AlignCenter)
         self.emotion_label.setFixedSize(240, 240)
         self.emotion_label.setStyleSheet("border: 0px solid #ccc; background-color: #f0f0f0;")
-        self.emotion_label.hide() # 💡 초기에는 이모지 레이블 숨김
+        self.emotion_label.hide() # 초기에는 이모지 레이블 숨김
 
-        # 2. 게임 시작 오버레이 버튼 (ClickableLabel 사용)
+        # 게임 시작 오버레이 버튼 (ClickableLabel 사용)
         self.start_overlay_button = ClickableLabel() # ClickableLabel 인스턴스 생성
         self.start_overlay_button.setFixedSize(240, 240)
         self.start_overlay_button.setAlignment(Qt.AlignCenter)
@@ -307,7 +302,7 @@ class Game1Screen(QWidget):
 
         self.start_overlay_button.clicked.connect(self.start_game_clicked) # 슬롯 연결
         
-        # 3. 이모지와 오버레이 버튼을 담을 위젯 (Stack)
+        # 이모지와 오버레이 버튼을 담을 위젯 (Stack)
         self.center_widget = QWidget()
         center_stack_layout = QStackedWidget(self.center_widget) # QStackedWidget을 사용하여 겹치게 처리
         center_stack_layout.addWidget(self.emotion_label) 
@@ -318,7 +313,7 @@ class Game1Screen(QWidget):
         # 하단 레이아웃 (웹캠 1 - 중앙 컨테이너 - 웹캠 2)
         bottom_h_layout = QHBoxLayout()
         
-        # P1 웹캠 및 정확도 (코드 유지)
+        # P1 웹캠 및 정확도
         player1_v_layout = QVBoxLayout()
         self.player1_webcam_title = QLabel('PLAYER 1') 
         self.player1_webcam_title.setFont(QFont('ARCO', 50)) 
@@ -350,7 +345,7 @@ class Game1Screen(QWidget):
 
         player1_v_layout.addStretch(1) 
 
-        # P2 웹캠 및 정확도 (코드 유지)
+        # P2 웹캠 및 정확도
         player2_v_layout = QVBoxLayout()
         self.player2_webcam_title = QLabel('PLAYER 2')
         self.player2_webcam_title.setFont(QFont('ARCO', 50)) 
@@ -448,7 +443,7 @@ class Game1Screen(QWidget):
             h_layout.addWidget(score_label)
             h_layout.addSpacing(5) 
             
-    # ✨ P1, P2 점수에 따라 이미지(하트)를 업데이트하는 함수
+    # P1, P2 점수에 따라 이미지(하트)를 업데이트하는 함수
     def update_score_display(self):
         # P1 점수 표시 업데이트
         for i in range(self.MAX_ROUNDS):
@@ -472,7 +467,7 @@ class Game1Screen(QWidget):
             else:
                 self.p2_score_images[i].setText("?") 
         
-    # 랜덤으로 선택된 이모지 파일명을 받아 QLabel에 표시하는 함수 (유지)
+    # 랜덤으로 선택된 이모지 파일명을 받아 QLabel에 표시하는 함수
     def set_required_emotion(self, emotion_file):
         self.current_emotion_file = emotion_file
         file_path = os.path.join("img/emoji", emotion_file)
@@ -491,9 +486,9 @@ class Game1Screen(QWidget):
             self.emotion_label.setPixmap(scaled_pixmap)
             self.emotion_label.setStyleSheet("border: 0px solid #ccc; background-color: #f0f0f0;") 
         
-    # update_timer 함수 (유지)
+    # update_timer 함수
     def update_timer(self):
-        # 1. 게임 시간 카운트 다운
+        # 게임 시간 카운트 다운
         if self.time_left > 0:
             self.time_left -= 1
             
@@ -551,7 +546,7 @@ class Game1Screen(QWidget):
                     self.player2_video.clear()
                     self.update_score_display()
 
-    # start_next_round 함수 (유지)
+    # start_next_round 함수
     def start_next_round(self):
         if self.p1_score >= self.MAX_ROUNDS or self.p2_score >= self.MAX_ROUNDS:
             return 
@@ -566,7 +561,7 @@ class Game1Screen(QWidget):
 
         self.start_video_streams() 
 
-    # update_image_and_score 함수 (유지)
+    # update_image_and_score 함수
     def update_image_and_score(self, image, score, player_index):
         if self.is_game_active:
             pixmap = QPixmap.fromImage(image)
@@ -582,7 +577,7 @@ class Game1Screen(QWidget):
                 self.player2_accuracy.setText(f'P2 정확도: {self.p2_max_similarity: .2f}%')
 
                         
-    # start_video_streams 함수 (유지)
+    # start_video_streams 함수
     def start_video_streams(self):
         # 기존 스레드가 실행 중일 수 있으므로 안전하게 중지 및 정리
         self.stop_video_streams()
@@ -616,7 +611,7 @@ class Game1Screen(QWidget):
         self.video_threads.append(thread2)
         
         self.time_left = self.total_game_time
-        # ✨ [수정] start_game_clicked에서 타이머를 보이게 했으므로, 여기서는 시간만 설정합니다.
+        # start_game_clicked에서 타이머를 보이게 했으므로, 여기서는 시간만 설정합니다.
         self.timer_label.setText(f"{self.total_game_time}")
         self.timer_label.setStyleSheet("color: #0AB9FF; font-weight: bold;")
         
@@ -646,7 +641,7 @@ class Game1Screen(QWidget):
     def go_to_main_menu(self):
         self.stop_video_streams()
         
-        # 💡 메뉴로 돌아갈 때 오버레이 버튼 다시 표시
+        # 메뉴로 돌아갈 때 오버레이 버튼 다시 표시
         self.start_overlay_button.show()
         self.emotion_label.hide() # 이모지 레이블 숨김
         self.timer_label.hide() 

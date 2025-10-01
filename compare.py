@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import os, re
 import pandas as pd
+from person_in_frame import person_in_frame
 
 def extract_blendshape_scores(img):
     """
@@ -107,18 +108,20 @@ def calc_similarity(face_img, emoji):
     """
     # 해당 이모지의 표정 특징 값 가져오기
     try:
-
         features = pd.read_csv('faces.csv')
         # emoji에서 라벨 분리
+        img2 = person_in_frame(face_img)
+        if img2 is None: return 0
+        img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2RGB)
         label = int(re.sub(r'(\_)(\w+)(\.\w+)?$', '', emoji))
         feature = features[features["labels"] == label].values[0]
-        blend1 = extract_blendshape_scores(face_img)
+        blend1 = extract_blendshape_scores(img2)
         blend2 = {features.keys()[i]: feature[i] for i in range(len(features.keys()))}
         
         return compare_blendshape_scores(blend1, blend2)
     except:
+        print("유사도 측정 실패")
         return 0
-
 
 # 테스트 코드. import시 작동하지 않음.
 if __name__ == "__main__":

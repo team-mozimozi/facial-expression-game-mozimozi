@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import (
     QHBoxLayout, QStackedWidget
 )
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QSize
-from PyQt5.QtGui import QImage, QPixmap, QFont, QIcon
+from PyQt5.QtGui import QImage, QPixmap, QFont, QIcon, QColor
 
 flag = {
     'SCREEN_WIDTH': 1920,
@@ -25,7 +25,7 @@ flag = {
     'BUTTON2_X': 759, # BUTTON1_X + BUTTON_WIDTH + BUTTON_SPACING
     'BUTTON3_X': 1202, # BUTTON2_X + BUTTON_WIDTH + BUTTON_SPACING
 
-    # 우측 하단 버튼 정의 (추가)
+    # 우측 하단 버튼 정의
     'BUTTON_EXIT_WIDTH': 129,
     'BUTTON_EXIT_HEIGHT': 101,
     'BUTTON_EXIT_MARGIN': 20,
@@ -37,7 +37,13 @@ flag = {
     'BUTTON_EXIT_IMAGE_PATH': 'design/exit.png',
     'EMPTY_SCORE_IMAGE': "design/score_empty_heart.png", # 점수가 없을 때 이미지 경로
     'FILLED_SCORE_IMAGE': "design/score_filled_heart.png", # 점수가 있을 때 이미지 경로
-    'MAIN_BUTTON_IMAGE': "design/main.png" # 메인메뉴 버튼 이미지 경로
+    'MAIN_BUTTON_IMAGE': "design/main.png", # 메인메뉴 버튼 이미지 경로
+    'START_BUTTON_IMAGE': "design/start_game.png",
+
+    'MODE3_FONT_FAMILY': 'ARCO',
+    'MODE3_FILL_COLOR': QColor("#EBE052"),    # 핫핑크
+    'MODE3_OUTLINE_COLOR': QColor("#1608D8"), # 거의 흰색
+    'MODE3_OUTLINE_WIDTH': 0.3
 }
 
 # ----------------------------------------------------------------------
