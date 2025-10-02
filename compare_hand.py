@@ -1,7 +1,9 @@
 import mediapipe as mp
+
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 from mediapipe.framework.formats import landmark_pb2
+
 import cv2
 import numpy as np
 import os, re
@@ -49,4 +51,3 @@ def detect_landmark(img):
         # 손 랜드마크를 인식할 수 없으면 None 반환
         return None
     
-
