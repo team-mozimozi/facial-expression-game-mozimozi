@@ -84,7 +84,7 @@ class OutlinedLabel(QLabel):
 class EmojiMatchThread(QThread):
     change_pixmap_signal = pyqtSignal(QImage)
 
-    def __init__(self, camera_index, all_emotion_files, width=400, height=300):
+    def __init__(self, camera_index, all_emotion_files, width=flag['VIDEO_WIDTH'], height=flag['VIDEO_HEIGHT']):
         super().__init__()
         self.camera_index = camera_index
         self.all_emotion_files = all_emotion_files
@@ -114,6 +114,7 @@ class EmojiMatchThread(QThread):
             ret, frame = cap.read()
             if ret:
                 rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                self.current_frame_rgb = rgb_image
                 h, w, ch = rgb_image.shape
                 bytes_per_line = ch * w
 
@@ -364,11 +365,22 @@ class Game2Screen(QWidget):
         pixmap = QPixmap.fromImage(image)
         self.video_label.setPixmap(pixmap)
 
+    def get_available_camera_index(self):
+        """사용 가능한 가장 낮은 인덱스의 웹캠 번호를 반환합니다."""
+        # 0부터 9까지 시도하며, 먼저 열리는 카메라의 인덱스를 반환
+        for index in range(10): 
+            cap = cv2.VideoCapture(index)
+            if cap.isOpened():
+                cap.release()
+                print(f"camera {index} available")
+                return index
+        return 0 # 찾지 못하면 기본값 0 반환
+
     def start_stream(self):
         self.stop_stream()
 
         self.video_thread = EmojiMatchThread(
-            camera_index=0,
+            camera_index=self.get_available_camera_index(),
             all_emotion_files=self.emotion_files,
             width=flag['VIDEO_WIDTH'],
             height=flag['VIDEO_HEIGHT']
@@ -420,7 +432,6 @@ class Game2Screen(QWidget):
 
             # 스레드 멈추기
             self.stop_stream()
-            
             # 가져온 프레임이 유효하면 이모지 매칭 실행
             if frame_to_process is not None:
                 self.get_best_emoji(frame_to_process)
@@ -432,55 +443,35 @@ class Game2Screen(QWidget):
     def get_best_emoji(self, rgb_image):
         try:
             from compare import extract_blendshape_scores, compare_blendshape_scores
+            from person_in_frame import person_in_frame
             import pandas as pd
             import re
-        except ImportError as e:
-            print(f"Error: Required modules (pandas, re, compare.py functions) not found. Cannot perform emoji matching logic. {e}")
-            # GUI만 업데이트하고 로직은 생략
+            """캡처된 OpenCV 이미지로 유사도를 계산하고 GUI를 업데이트합니다."""
             best_similarity = 0.0
-            best_match_emoji = self.emotion_files[0] if self.emotion_files else "0_placeholder.png"
-            # return # 실제 환경에서는 여기서 return
+            best_match_emoji = self.emotion_files[0] if self.emotion_files else "0_angry.png"
+            bgr_image = cv2.cvtColor(rgb_image, cv2.COLOR_RGB2BGR)
+            # 현재 frame의 blendshape값 계산
+            person = cv2.cvtColor(person_in_frame(bgr_image), cv2.COLOR_BGR2RGB)
+            blend1 = extract_blendshape_scores(person)
 
-        """캡처된 OpenCV 이미지로 유사도를 계산하고 GUI를 업데이트합니다."""
-        best_similarity = 0.0
-        best_match_emoji = self.emotion_files[0] if self.emotion_files else "0_placeholder.png"
-
-        # 임시 로직 (실제 모듈이 없을 경우)
-        try:
+            # 미리 저장된 blendshape 값 불러오기
             features = pd.read_csv('faces.csv')
-            blend1 = extract_blendshape_scores(rgb_image)
+            
             # 유사도 계산 로직
             for emoji_file in self.emotion_files:
                 try:
-                    # 파일 이름에서 숫자 레이블 추출
-                    match = re.search(r'^(\d+)_', emoji_file)
-                    if match:
-                        label = int(match.group(1))
-                    else:
-                        continue # 레이블을 찾을 수 없는 파일은 건너뛰기
-
-                    feature_row = features[features["labels"] == label]
-                    if feature_row.empty:
-                        continue
-                    
-                    feature = feature_row.iloc[0].to_dict() # Series를 dict로 변환
-                    blend2 = feature # compare_blendshape_scores 함수가 처리할 수 있도록 전체 dict 전달
-
+                    label = int(re.sub(r'(\_)(\w+)(\.\w+)?$', '', emoji_file))
+                    feature = features[features["labels"] == label].values[0]
+                    blend2 = {features.keys()[i]: feature[i] for i in range(len(features.keys()))}
                     similarity = compare_blendshape_scores(blend1, blend2)
-                    
                     if similarity > best_similarity:
                         best_similarity = similarity
                         best_match_emoji = emoji_file
                 except Exception as e:
-                    # print(f"Similarity calculation failed for {emoji_file}: {e}")
+                    print(f"Similarity calculation failed for {emoji_file}: {e}")
                     continue
-        except NameError:
-            print("Skipping actual matching due to missing imports/files.")
-        except FileNotFoundError:
-            print("Skipping actual matching: faces.csv not found.")
-        except Exception as e:
-            print(f"An error occurred during matching logic: {e}")
-
+        except:
+            print("유사도 검색 실패!")
 
         # GUI 업데이트
         
