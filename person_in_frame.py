@@ -8,7 +8,7 @@ model = YOLO("yolov5nu.pt")
 
 def person_in_frame(frame):
     # model을 통해 객체 인식
-    results = model(frame) # 객체 여러 개 감지될 수 있음
+    results = model(frame, imgsz=320) # 객체 여러 개 감지될 수 있음
 
     # 감지된 결과를 하나씩 처리
     x_shape = frame.shape[1]
