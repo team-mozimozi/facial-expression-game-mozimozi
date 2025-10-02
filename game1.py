@@ -12,6 +12,8 @@ from compare import calc_similarity
 import numpy as np
 from mainmenu import flag
 
+
+
 # ClickableLabel 클래스
 class ClickableLabel(QLabel):
     clicked = pyqtSignal()
@@ -23,6 +25,8 @@ class ClickableLabel(QLabel):
 # 웹캠 처리를 위한 QThread 클래스
 class VideoThread(QThread):
     change_pixmap_score_signal = pyqtSignal(QImage, float, int)
+            
+    signal_ready = pyqtSignal() # 👈 이 줄이 반드시 있어야 합니다.        
                                         
     # 비교할 emoji 파일이름과 player_index를 받음
     def __init__(self, camera_index, emotion_file, player_index, width=flag["VIDEO_WIDTH"], height=flag["VIDEO_HEIGHT"]):
@@ -46,9 +50,16 @@ class VideoThread(QThread):
             print(f"Error: Could not open camera {self.camera_index}. Check index or availability.")
             self.running = False
             return
-            
+       
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
+
+
+        TARGET_FPS = 30.0
+        cap.set(cv2.CAP_PROP_FPS, TARGET_FPS) 
+        
+        #  시그널 발생 (P2 시작 신호)
+        self.signal_ready.emit() 
 
         while self.running:
             ret, frame = cap.read()
@@ -406,7 +417,7 @@ class Game1Screen(QWidget):
         bottom_h_layout.addStretch(1)
         main_layout.addLayout(bottom_h_layout)
         
-        # 🟢 종료 버튼을 위한 새로운 하단 레이아웃 추가
+        # 종료 버튼을 위한 새로운 하단 레이아웃 추가
         bottom_exit_layout = QHBoxLayout()
         bottom_exit_layout.addStretch(0) # 좌측에 공간 추가
         bottom_exit_layout.addWidget(self.back_btn) # 종료 버튼 추가
@@ -589,6 +600,7 @@ class Game1Screen(QWidget):
         # 0부터 9까지 시도하며, 먼저 열리는 카메라의 인덱스를 반환
         count = 0
         idxs = []
+        
         for index in range(10): 
             cap = cv2.VideoCapture(index)
             if cap.isOpened():
@@ -598,6 +610,25 @@ class Game1Screen(QWidget):
             if count >= 2:
                 return idxs
         return [0, 1] # 찾지 못하면 기본값 0 반환
+
+    def start_player2_stream_sequential(self):
+        """P1 워밍업 완료 후 P2 스트림을 시작하고 타이머를 시작합니다."""
+        if len(self.video_threads) < 2: 
+            index = self.get_available_camera_index()
+            thread2 = VideoThread(
+                camera_index = index[1],
+                emotion_file = self.current_emotion_file,
+                player_index = 1
+                )
+            thread2.change_pixmap_score_signal.connect(self.update_image_and_score)
+            thread2.start()
+            self.video_threads.append(thread2)
+            print(f"웹캠 스트리밍 (P2) 작동 시작: 인덱스 {index[1]}")
+            
+            # P2까지 모두 시작되었으므로 게임 타이머를 시작합니다.
+            self.game_timer.start(1000)
+
+
 
     # start_video_streams 함수
     def start_video_streams(self):
@@ -612,34 +643,28 @@ class Game1Screen(QWidget):
             random_emotion_id = random.choice(self.emotion_ids)
             self.set_required_emotion(random_emotion_id)
         index = self.get_available_camera_index()
-        # 첫 번째 웹캠 스레드
-        thread1 = VideoThread(
+        
+        
+        # 1. Player 1 (P1) 스레드 즉시 시작
+        self.thread1 = VideoThread( # self.thread1로 저장
             camera_index = index[0],
             emotion_file = self.current_emotion_file,
             player_index = 0
             )
-        thread1.change_pixmap_score_signal.connect(self.update_image_and_score)
-        thread1.start()
-        self.video_threads.append(thread1)
-
-        # 두 번째 웹캠 스레드
-        thread2 = VideoThread(
-            camera_index = index[1],
-            emotion_file = self.current_emotion_file,
-            player_index = 1
-            )
-        thread2.change_pixmap_score_signal.connect(self.update_image_and_score)
-        thread2.start()
-        self.video_threads.append(thread2)
+        self.thread1.change_pixmap_score_signal.connect(self.update_image_and_score)
+        
+        # P1의 '준비 완료' 시그널이 오면 P2를 시작하도록 연결
+        self.thread1.signal_ready.connect(self.start_player2_stream_sequential) 
+        
+        self.thread1.start()
+        self.video_threads.append(self.thread1)
+        print(f"웹캠 스트리밍 (P1) 작동 시작: 인덱스 {index[0]}")
         
         self.time_left = self.total_game_time
-        # start_game_clicked에서 타이머를 보이게 했으므로, 여기서는 시간만 설정합니다.
         self.timer_label.setText(f"{self.total_game_time}")
         self.timer_label.setStyleSheet("color: #0AB9FF; font-weight: bold;")
         
-        self.game_timer.start(1000)
-        
-        print(f"웹캠 스트리밍 및 타이머 작동 시작")
+        # 타이머 시작 코드는 P2 시작 함수로 옮깁니다. (start_player2_stream_sequential)
     
 
     # stop_video_streams 함수

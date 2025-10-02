@@ -12,8 +12,8 @@ flag = {
     'SCREEN_WIDTH': 1920,
     'SCREEN_HEIGHT': 1080,
 
-    'VIDEO_WIDTH': 500,
-    'VIDEO_HEIGHT': 370,
+    'VIDEO_WIDTH': 400,
+    'VIDEO_HEIGHT': 300,
 
     'BUTTON_WIDTH': 402,
     'BUTTON_HEIGHT': 410,
