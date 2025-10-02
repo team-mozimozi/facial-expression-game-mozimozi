@@ -126,8 +126,7 @@ class TimeAttackThread(QThread):
             if ret:
                 self.frame_count += 1
                 if self.frame_count % self.inference_interval == 1:
-                    # 유사도 계산 (실제로는 calc_similarity 사용)
-                    self.similarity = random.uniform(0.0, 100.0)
+                    self.similarity = calc_similarity(frame, self.emotion_file)
                     self.frame_count = 0
                 rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 h, w, ch = rgb_image.shape

@@ -104,7 +104,6 @@ def similarity_worker(item_queue, similarity_value):
 class VideoThread(QThread):
     # QImage로 변환한 frame과 player_index를 신호로 보냄
     change_pixmap_score_signal = pyqtSignal(QImage, int)
-    signal_ready = pyqtSignal()
                                         
     # 비교할 emoji 파일이름과 player_index를 받음
     # 유사도 계산 Worker를 사용할 item_queue와 similarity value 추가
@@ -139,7 +138,6 @@ class VideoThread(QThread):
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
         TARGET_FPS = 30.0
         cap.set(cv2.CAP_PROP_FPS, TARGET_FPS) 
-        self.signal_ready.emit()
         while self.running:
             ret, frame = cap.read()
             if ret:
@@ -765,15 +763,7 @@ class Game1Screen(QWidget):
         """P1 워밍업 완료 후 P2 스트림을 시작하고 타이머를 시작합니다."""
         if len(self.video_threads) < 2: 
             index = self.get_available_camera_index()
-            thread2 = VideoThread(
-                self.p2_queue,
-                camera_index = index[1],
-                emotion_file = self.current_emotion_file,
-                player_index = 1
-                )
-            thread2.change_pixmap_score_signal.connect(self.update_image_and_score)
-            thread2.start()
-            self.video_threads.append(thread2)
+            
             print(f"웹캠 스트리밍 (P2) 작동 시작: 인덱스 {index[1]}")
             
             # P2까지 모두 시작되었으므로 게임 타이머를 시작합니다.
@@ -797,8 +787,17 @@ class Game1Screen(QWidget):
             )
         thread1.change_pixmap_score_signal.connect(self.update_image_and_score)
         self.video_threads.append(thread1)
-        thread1.signal_ready.connect(self.start_player2_stream_sequential)
         thread1.start()
+        
+        thread2 = VideoThread(
+            self.p2_queue,
+            camera_index = index[1],
+            emotion_file = self.current_emotion_file,
+            player_index = 1
+            )
+        thread2.change_pixmap_score_signal.connect(self.update_image_and_score)
+        thread2.start()
+        self.video_threads.append(thread2)
 
         self.time_left = self.total_game_time
         # start_game_clicked에서 타이머를 보이게 했으므로, 여기서는 시간만 설정합니다.
