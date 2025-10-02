@@ -5,6 +5,24 @@ import os, re
 import pandas as pd
 from person_in_frame import person_in_frame
 
+# 매번 모델을 새로 로드하는것을 방지하기 위해
+# 미리 mediapipe facelandmarker 모델 선언
+baseoptions = mp.tasks.BaseOptions
+facelandmarker = mp.tasks.vision.FaceLandmarker
+facelandmarkeroptions = mp.tasks.vision.FaceLandmarkerOptions
+visionrunningmode = mp.tasks.vision.RunningMode
+model_path = 'face_landmarker.task'
+options = facelandmarkeroptions(
+    base_options=baseoptions(model_asset_path=model_path),
+    running_mode=visionrunningmode.IMAGE,
+    output_face_blendshapes=True,
+    output_facial_transformation_matrixes=False,
+    num_faces=1,
+)
+landmarker = facelandmarker.create_from_options(options)
+# 이모지와 비슷한 표정을 가진 사람의 특징점들을 담은 csv파일
+features = pd.read_csv('faces.csv')
+
 def extract_blendshape_scores(img):
     """
     주어진 이미지로부터 표정 특징점들을 추출하는 함수
@@ -15,30 +33,15 @@ def extract_blendshape_scores(img):
         List of dict: {특징 이름: 값} 형태의 모든 특징값들을 담은 딕셔너리 리스트
                       만약 받은 사진이 얼굴 사진이 아니라면 None 반환
     """
-    # 특징을 추출할 mediapipe의 모델 설정 값 가져오기
-    baseoptions = mp.tasks.BaseOptions
-    facelandmarker = mp.tasks.vision.FaceLandmarker
-    facelandmarkeroptions = mp.tasks.vision.FaceLandmarkerOptions
-    visionrunningmode = mp.tasks.vision.RunningMode
-    model_path = 'face_landmarker.task'
-    options = facelandmarkeroptions(
-        base_options=baseoptions(model_asset_path=model_path),
-        running_mode=visionrunningmode.IMAGE,
-        output_face_blendshapes=True,
-        output_facial_transformation_matrixes=False,
-        num_faces=1,
-    )
-    # face_landmarker.task에 저장된 모델을 불러와 특징 추출에 사용
-    with facelandmarker.create_from_options(options) as landmarker:
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=img)
-        detection_result = landmarker.detect(mp_image)
+    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=img)
+    detection_result = landmarker.detect(mp_image)
 
-        # 추출된 표정 특징이 존재하면 blendshape score 반환
-        if detection_result.face_blendshapes:
-            return detection_result.face_blendshapes[0]
-        # 표정 특징이 없으면 None 반환
-        else:
-            return None
+    # 추출된 표정 특징이 존재하면 blendshape score 반환
+    if detection_result.face_blendshapes:
+        return detection_result.face_blendshapes[0]
+    # 표정 특징이 없으면 None 반환
+    else:
+        return None
         
 def compare_blendshape_scores(blendshape1, blendshape2):
     """
@@ -108,7 +111,6 @@ def calc_similarity(face_img, emoji):
     """
     # 해당 이모지의 표정 특징 값 가져오기
     try:
-        features = pd.read_csv('faces.csv')
         # emoji에서 라벨 분리
         img2 = person_in_frame(face_img)
         if img2 is None: return 0
@@ -125,6 +127,7 @@ def calc_similarity(face_img, emoji):
 
 # 테스트 코드. import시 작동하지 않음.
 if __name__ == "__main__":
-    img1 = cv2.imread("img/human/13_sleepy.jpg")
-    emoji = "13_sleepy"
-    print(calc_similarity(img1, emoji))
+    emoji_to_csv(
+        emoji_dir='img/emoji',
+        human_dir='img/human'
+    )
