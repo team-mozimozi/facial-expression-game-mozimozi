@@ -83,7 +83,8 @@ def similarity_worker(item_queue, similarity_value):
     while True:
         item = item_queue.get()
         if item is None:
-            break
+            print("Queue empty!")
+            continue
         # frame queue에 값이 들어올 때까지 대기
         frame, emoji = item
         if frame is None:
@@ -91,7 +92,7 @@ def similarity_worker(item_queue, similarity_value):
             break
         try:
             # 들어온 프레임으로 유사도 계산
-            similarity = calc_similarity(frame, emoji)
+            similarity = 0 if emoji == "" else calc_similarity(frame, emoji)
             # 최대 유사도만 저장
             current_similarity = similarity_value.value
             if similarity > current_similarity:
@@ -104,6 +105,7 @@ def similarity_worker(item_queue, similarity_value):
 class VideoThread(QThread):
     # QImage로 변환한 frame과 player_index를 신호로 보냄
     change_pixmap_score_signal = pyqtSignal(QImage, int)
+    signal_ready = pyqtSignal(int)
                                         
     # 비교할 emoji 파일이름과 player_index를 받음
     # 유사도 계산 Worker를 사용할 item_queue와 similarity value 추가
@@ -133,11 +135,13 @@ class VideoThread(QThread):
             print(f"Error: Could not open camera {self.camera_index}. Check index or availability.")
             self.running = False
             return
-            
+
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
         TARGET_FPS = 30.0
-        cap.set(cv2.CAP_PROP_FPS, TARGET_FPS) 
+        cap.set(cv2.CAP_PROP_FPS, TARGET_FPS)
+        self.signal_ready.emit(self.player_index)
+
         while self.running:
             ret, frame = cap.read()
             if ret:
@@ -169,48 +173,73 @@ class Resultscreen(QWidget):
         self.stacked_widget = stacked_widget
         self.initUI()
         self.winner_text = ""
-        
+    def create_custom_button(self, text, x, y, width, height, font_size=20, border_radius=58, bg_color=flag['BUTTON_COLOR']):
+        """MainMenu에서 가져온 QPushButton 생성 및 스타일 설정 함수"""
+        button = QPushButton(text, self)
+        button.setGeometry(x, y, width, height)
+        style = f"""
+            QPushButton {{
+                background-color: {bg_color}; color: #343A40; border-radius: {border_radius}px;
+                font-family: 'Jalnan Gothic', 'Arial', sans-serif; font-size: {font_size}pt; font-weight: light; border: none;
+            }}
+        """
+        button.setStyleSheet(style)
+        return button
+    def create_exit_button(self):
+        # 우측 하단 종료 버튼 (QPushButton) 생성
+        self.btn_exit = self.create_custom_button(
+            "", flag['BUTTON_EXIT_X'], flag['BUTTON_EXIT_Y'],
+            flag['BUTTON_EXIT_WIDTH'], flag['BUTTON_EXIT_HEIGHT'],
+            bg_color="transparent"
+        )
+        self.btn_exit.setObjectName("BottomRightIcon")
+        # 아이콘 이미지 설정 및 크기 조정
+        icon_path = flag['BUTTON_EXIT_IMAGE_PATH']
+        icon_pixmap = QPixmap(icon_path)
+        icon_size = QSize(
+            int(flag['BUTTON_EXIT_WIDTH'] * 0.8),
+            int(flag['BUTTON_EXIT_HEIGHT'] * 0.8)
+        )
+        scaled_icon = icon_pixmap.scaled(
+            icon_size,
+            Qt.KeepAspectRatio,
+            Qt.SmoothTransformation
+        )
+        self.btn_exit.setIcon(QIcon(scaled_icon))
+        self.btn_exit.setIconSize(scaled_icon.size())
+        # 우측 하단 버튼 고유 스타일시트 적용
+        unique_style = f"""
+            QPushButton#BottomRightIcon {{
+                background-color: transparent; border-radius: 20px; border: none; color: transparent;
+            }}
+            QPushButton#BottomRightIcon:hover {{
+                background-color: rgba(255, 255, 255, 0.2);
+            }}
+            QPushButton#BottomRightIcon:pressed {{
+                background-color: rgba(255, 255, 255, 0.4);
+            }}
+        """
+        self.btn_exit.setStyleSheet(self.btn_exit.styleSheet() + unique_style)
+        # 커서 설정
+        self.btn_exit.setCursor(QCursor(Qt.PointingHandCursor))
+        # 클릭 시 Index 1로 돌아가는 기능 연결 (요청 사항 반영)
+        self.btn_exit.clicked.connect(self.go_to_index_0)
+        return self.btn_exit
     def initUI(self):
-        self.layout = QVBoxLayout()
-        self.layout.addSpacing(30) 
-        
+        self.layout = QVBoxLayout(self)
+        self.layout.addSpacing(30)
         self.result_title = QLabel("게임 종료!")
         self.result_title.setFont(QFont('Jalnan 2', 60, QFont.Bold))
         self.result_title.setAlignment(Qt.AlignCenter)
-        
         self.winner_label = QLabel("결과 계산 중...")
         self.winner_label.setFont(QFont('Jalnan 2', 60))
         self.winner_label.setAlignment(Qt.AlignCenter)
-        
-        # "메인 메뉴로 돌아가기" 버튼을 이미지로 변경 및 위치 조정
-        back_to_menu_button = ClickableLabel()
-        back_to_menu_button.clicked.connect(self.main_menu_button)
-        
-        exit_pixmap = QPixmap(flag['MAIN_BUTTON_IMAGE'])
-        if not exit_pixmap.isNull():
-            back_to_menu_button.setPixmap(exit_pixmap)
-            back_to_menu_button.setFixedSize(exit_pixmap.size()) # 이미지 크기에 맞게 설정
-            back_to_menu_button.setFixedSize(250, 60)
-        else:
-            back_to_menu_button.setText("메인 메뉴로 돌아가기")
-            back_to_menu_button.setFixedSize(250, 60) # 기본 크기
-            back_to_menu_button.setStyleSheet("background-color: #0AB9FF; color: white; border-radius: 10px;")
-            print("경고: 'design/exit.png' 이미지를 찾을 수 없습니다. 텍스트 버튼으로 대체.")
-
-        h_layout = QHBoxLayout()
-        h_layout.addSpacing(1) # 좌측에 공간을 추가하여 버튼을 오른쪽으로 밈
-        h_layout.addWidget(back_to_menu_button)
-        h_layout.addSpacing(1) # 우측 여백
-        
+        self.layout.addStretch(5)
         self.layout.addWidget(self.result_title)
         self.layout.addStretch(1)
         self.layout.addWidget(self.winner_label)
-        self.layout.addStretch(2)
-        self.layout.addLayout(h_layout) # 하단 레이아웃 추가
-        self.layout.addSpacing(20) # 하단 여백 추가
-
-        self.setLayout(self.layout)
-
+        self.layout.addStretch(6)
+        self.create_exit_button()
     def set_results(self, p1_score, p2_score):
         if p1_score > p2_score:
             self.winner_text = f"🎉 PLAYER 1 승리! 🎉 \n P1: {p1_score:.0f}점 / P2: {p2_score:.0f}점"
@@ -224,10 +253,9 @@ class Resultscreen(QWidget):
             self.winner_text = f"🤝 무승부입니다! 🤝 \n P1: {p1_score:.0f}점 / P2: {p2_score:.0f}점"
             self.winner_label.setFont(QFont('Jalnan 2', 50))
             self.winner_label.setStyleSheet("color: black;")
-            
         self.winner_label.setText(self.winner_text)
-
-    def main_menu_button(self):
+    def go_to_index_0(self):
+        """결과창을 닫고 메인화면으로 전환"""
         self.stacked_widget.setCurrentIndex(0)
         return
 
@@ -238,6 +266,7 @@ class Game1Screen(QWidget):
     def __init__(self, stacked_widget):
         super().__init__()
         self.stacked_widget = stacked_widget
+        
         self.video_threads = []
         
         if os.path.isdir("img/emoji"):
@@ -250,11 +279,11 @@ class Game1Screen(QWidget):
         manager = Manager()
         self.p1_score = 0
         self.p2_score = 0
-        self.p1_queue = Queue()
-        self.p2_queue = Queue()
+        self.p1_queue = manager.Queue()
+        self.p2_queue = manager.Queue()
         self.p1_max_similarity = manager.Value(float, 0.0)
         self.p2_max_similarity = manager.Value(float, 0.0)
-        self.current_emotion_file = "0_angry.png"
+        self.current_emotion_file = ""
         self.p1_worker = None
         self.p2_worker = None
         self.round = 0
@@ -268,6 +297,11 @@ class Game1Screen(QWidget):
         
         self.game_timer = QTimer(self)
         self.game_timer.timeout.connect(self.update_timer)
+        
+        # 정확도 업데이트 전용 타이머 추가
+        #self.accuracy_update_timer = QTimer(self)
+        #self.accuracy_update_timer.timeout.connect(self.update_accuracies) # 아래 2번 항목 연결
+        
         self.total_game_time = 10
         self.time_left = self.total_game_time
         self.is_game_active = False
@@ -567,8 +601,7 @@ class Game1Screen(QWidget):
         self.setLayout(main_layout)
         
         self.update_score_display()
-
-
+    
     # 새로운 슬롯: 게임 시작 버튼 클릭 시
     def start_game_clicked(self):
         
@@ -585,15 +618,6 @@ class Game1Screen(QWidget):
         self.p1_score = 0
         self.p2_score = 0
         self.round = 0
-
-        self.p1_worker = Process(target=similarity_worker, args=(self.p1_queue, self.p1_max_similarity))
-        self.p2_worker = Process(target=similarity_worker, args=(self.p2_queue, self.p2_max_similarity))
-
-        # 유사도 계산 Worker 시작
-        if self.p1_worker and not self.p1_worker.is_alive():
-            self.p1_worker.start()
-        if self.p1_worker and not self.p1_worker.is_alive():
-            self.p2_worker.start()
         
         self.update_score_display() # 점수 이미지 초기화
 
@@ -606,10 +630,10 @@ class Game1Screen(QWidget):
             score_label = QLabel()
             score_label.setFixedSize(flag['SCORE_IMAGE_SIZE'], flag['SCORE_IMAGE_SIZE'])
             score_label.setAlignment(Qt.AlignCenter)
-            h_layout.addSpacing(5) 
+            h_layout.addSpacing(5)
             score_image_list.append(score_label)
             h_layout.addWidget(score_label)
-            h_layout.addSpacing(5) 
+            h_layout.addSpacing(5)
             
     # P1, P2 점수에 따라 이미지(하트)를 업데이트하는 함수
     def update_score_display(self):
@@ -638,6 +662,8 @@ class Game1Screen(QWidget):
     # 랜덤으로 선택된 이모지 파일명을 받아 QLabel에 표시하는 함수
     def set_required_emotion(self, emotion_file):
         self.current_emotion_file = emotion_file
+        self.video_threads[0].emotion_file = self.current_emotion_file
+        self.video_threads[1].emotion_file = self.current_emotion_file
         file_path = os.path.join("img/emoji", emotion_file)
 
         pixmap = QPixmap(file_path)
@@ -667,31 +693,32 @@ class Game1Screen(QWidget):
             # time_left == 0이 되는 순간 UI 업데이트를 멈춥니다.
             if self.time_left == 0:
                 self.game_timer.stop()
-                self.is_game_active = False
                 
                 # --- 라운드 승패 판정 ---
                 if self.p1_max_similarity.value == self.p2_max_similarity.value:
                     self.timer_label.setText("무승부! 재도전")
+                    self.current_emotion_file = ""
                     QTimer.singleShot(2000, self.start_next_round)
                 else:
                     if self.p1_max_similarity.value > self.p2_max_similarity.value: # 플레이어1 승리
                         self.timer_label.setText("P1 승리!")
                         self.p1_score += 1
+                        self.current_emotion_file = ""
                         if self.p1_score < self.MAX_ROUNDS:
-                            self.keep_workers = True
                             QTimer.singleShot(2000, self.start_next_round)
 
 
                     else: # 플레이어2 승리
                         self.timer_label.setText("P2 승리!")
                         self.p2_score += 1
+                        self.current_emotion_file = ""
                         if self.p2_score < self.MAX_ROUNDS:
                             QTimer.singleShot(2000, self.start_next_round)
                     self.update_score_display()
 
                 # --- 게임 종료 결정 (3점 선취승) ---
                 if self.p1_score >= self.MAX_ROUNDS or self.p2_score >= self.MAX_ROUNDS:
-                    self.keep_workers = False
+                    self.current_emotion_file = ""
                     self.timer_label.setText("게임 종료!")
                     self.stop_video_streams()
                     
@@ -708,6 +735,8 @@ class Game1Screen(QWidget):
                     self.stacked_widget.setCurrentIndex(2)
                     self.p1_score = 0
                     self.p2_score = 0
+                    self.p1_max_similarity.value = 0
+                    self.p2_max_similarity.value = 0
                     self.player1_accuracy.setText(f'P1 정확도: {self.p1_max_similarity.value: .2f}%')
                     self.player2_accuracy.setText(f'P2 정확도: {self.p2_max_similarity.value: .2f}%')
                     self.player1_video.clear()
@@ -723,13 +752,20 @@ class Game1Screen(QWidget):
         # queue에 None값을 넣어 Worker에 종료 시그널 전송
         self.player1_accuracy.setText(f'P1 정확도: 0.00%')
         self.player2_accuracy.setText(f'P2 정확도: 0.00%')
+        
         if self.emotion_ids:
             random_emotion_id = random.choice(self.emotion_ids)
             self.set_required_emotion(random_emotion_id)
         
         print(f"새 라운드 시작 (P1 승리: {self.p1_score} / P2 승리: {self.p2_score})")
 
-        self.start_video_streams() 
+        # 게임 타이머 시작 (필요하다면)
+        self.time_left = self.total_game_time
+        # start_game_clicked에서 타이머를 보이게 했으므로, 여기서는 시간만 설정합니다.
+        self.timer_label.setText(f"{self.total_game_time}")
+        self.timer_label.setStyleSheet("color: #0AB9FF; font-weight: bold;")
+        
+        self.game_timer.start(1000)
 
     # update_image_and_score 함수
     def update_image_and_score(self, image, player_index):
@@ -759,15 +795,41 @@ class Game1Screen(QWidget):
                 return idxs
         return [0, 1] # 찾지 못하면 기본값 0 반환
 
-    def start_player2_stream_sequential(self):
+    def start_player2_stream_sequential(self, player_index):
         """P1 워밍업 완료 후 P2 스트림을 시작하고 타이머를 시작합니다."""
         if len(self.video_threads) < 2: 
             index = self.get_available_camera_index()
-            
+            thread2 = VideoThread(
+                self.p2_queue,
+                camera_index = index[player_index],
+                emotion_file = self.current_emotion_file,
+                player_index = 1
+                )
+            thread2.change_pixmap_score_signal.connect(self.update_image_and_score)
+            thread2.signal_ready.connect(self.start_workers)
+            thread2.start()
+            self.video_threads.append(thread2)
             print(f"웹캠 스트리밍 (P2) 작동 시작: 인덱스 {index[1]}")
+            self.video_threads[0].signal_ready.disconnect(self.start_player2_stream_sequential)
             
-            # P2까지 모두 시작되었으므로 게임 타이머를 시작합니다.
-            self.game_timer.start(1000)
+
+    def start_workers(self, player_index):
+        if player_index == 0:
+            if not self.p1_worker:
+                self.p1_worker = Process(target=similarity_worker, args=(self.p1_queue, self.p1_max_similarity))
+            if self.p1_worker and not self.p1_worker.is_alive():
+                self.p1_worker.start()
+            self.video_threads[0].signal_ready.disconnect(self.start_workers)
+        elif player_index == 1:
+            if not self.p2_worker:
+                self.p2_worker = Process(target=similarity_worker, args=(self.p2_queue, self.p2_max_similarity))
+            if self.p2_worker and not self.p2_worker.is_alive():
+                self.p2_worker.start()
+            self.video_threads[1].signal_ready.disconnect(self.start_workers)
+        
+        print("Similarity Worker Started")
+
+        
 
     # start_video_streams 함수
     def start_video_streams(self):
@@ -787,25 +849,9 @@ class Game1Screen(QWidget):
             )
         thread1.change_pixmap_score_signal.connect(self.update_image_and_score)
         self.video_threads.append(thread1)
+        thread1.signal_ready.connect(self.start_player2_stream_sequential)
+        thread1.signal_ready.connect(self.start_workers)
         thread1.start()
-        
-        thread2 = VideoThread(
-            self.p2_queue,
-            camera_index = index[1],
-            emotion_file = self.current_emotion_file,
-            player_index = 1
-            )
-        thread2.change_pixmap_score_signal.connect(self.update_image_and_score)
-        thread2.start()
-        self.video_threads.append(thread2)
-
-        self.time_left = self.total_game_time
-        # start_game_clicked에서 타이머를 보이게 했으므로, 여기서는 시간만 설정합니다.
-        self.timer_label.setText(f"{self.total_game_time}")
-        self.timer_label.setStyleSheet("color: #0AB9FF; font-weight: bold;")
-        
-        self.game_timer.start(1000)
-        
         print(f"웹캠 스트리밍 및 타이머 작동 시작")
     
 
@@ -836,6 +882,10 @@ class Game1Screen(QWidget):
         self.p1_worker = None
         self.p2_worker = None
         
+        # 1. 게임 타이머 및 정확도 타이머 중지
+        if self.game_timer.isActive():
+            self.game_timer.stop()
+
         # 메뉴로 돌아갈 때 오버레이 버튼 다시 표시
         self.start_overlay_button.show()
         self.emotion_label.hide() # 이모지 레이블 숨김
@@ -855,6 +905,8 @@ class Game1Screen(QWidget):
         self.p2_max_similarity.value = 0
         self.round = 0
         self.update_score_display()
+        self.player1_accuracy.setText(f'P1 정확도: 0.00%')
+        self.player2_accuracy.setText(f'P2 정확도: 0.00%')
         self.stacked_widget.setCurrentIndex(0)
 
 if __name__ == '__main__':
