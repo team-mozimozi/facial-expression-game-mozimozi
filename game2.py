@@ -179,7 +179,7 @@ class Game2Screen(QWidget):
 
         # 상단 레이아웃
         top_h_layout = QHBoxLayout()
-        title = QLabel("설명설명설명설 명설명설명설명 설명설명설명설 명설명설명설명")
+        title = QLabel("찰칵! 버튼을 누르시면 본인과 닮은 이모지를 추천해드립니다!")
         title.setFont(QFont('Jalnan Gothic', 20))
         title.setStyleSheet("background-color: 'transparent'; color: #292E32; padding-left: 20px; padding-top: 20px;")
         title.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)

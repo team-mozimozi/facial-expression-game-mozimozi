@@ -9,7 +9,6 @@ from PyQt5.QtCore import Qt, QThread, pyqtSignal, QSize, QRect
 from PyQt5.QtGui import QImage, QPixmap, QFont, QIcon, QColor, QMouseEvent, QCursor
 import re 
 
-# 플래그 (Flag) 정의는 변경 없음
 flag = {
     'SCREEN_WIDTH': 1920,
     'SCREEN_HEIGHT': 1080,
@@ -20,7 +19,7 @@ flag = {
     'BUTTON_WIDTH': 402,
     'BUTTON_HEIGHT': 410,
     'BUTTON_COLOR': "transparent",
-    'BUTTON_LABELS': ["MODE1", "MODE2", "MODE3"],
+    'BUTTON_LABELS': ["누가누가\n더 잘 따라하나?", "나와 똑닮은\n이모지는 모지모지?!", "이모지 후다닥!"],
     'BUTTON1_X': 316,
     'BUTTON1_Y': 538,
     'BUTTON_SPACING': 41,

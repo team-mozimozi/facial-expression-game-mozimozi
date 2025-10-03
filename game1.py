@@ -12,6 +12,7 @@ from compare import calc_similarity
 import numpy as np
 from mainmenu import flag
 from multiprocessing import Queue, Manager, Process
+from back_button import create_main_menu_button
 
 # ClickableLabel 클래스
 class ClickableLabel(QLabel):
@@ -105,7 +106,7 @@ def similarity_worker(item_queue, similarity_value):
 class VideoThread(QThread):
     # QImage로 변환한 frame과 player_index를 신호로 보냄
     change_pixmap_score_signal = pyqtSignal(QImage, int)
-    signal_ready = pyqtSignal(int)
+    signal_ready = pyqtSignal()
                                         
     # 비교할 emoji 파일이름과 player_index를 받음
     # 유사도 계산 Worker를 사용할 item_queue와 similarity value 추가
@@ -140,7 +141,7 @@ class VideoThread(QThread):
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
         TARGET_FPS = 30.0
         cap.set(cv2.CAP_PROP_FPS, TARGET_FPS)
-        self.signal_ready.emit(self.player_index)
+        self.signal_ready.emit()
 
         while self.running:
             ret, frame = cap.read()
@@ -335,7 +336,7 @@ class Game1Screen(QWidget):
         
         # 타이틀/메뉴 버튼 레이아웃
         top_h_layout = QHBoxLayout()
-        title = QLabel("설명설명설명설 명설명설명설명 설명설명설명설 명설명설명설명")
+        title = QLabel("60초 내에 이모지의 표정을 더 잘 따라한 사람이 하트를 받고, 먼저 하트 3개를 모으면 승리합니다!")
         title.setFont(QFont('Jalnan Gothic', 20))
         title.setStyleSheet("background-color: 'transparent'; color: #292E32; padding-left: 20px; padding-top: 20px;")
         title.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
@@ -358,69 +359,7 @@ class Game1Screen(QWidget):
         self.timer_label.setStyleSheet("background-color: transparent;")
         self.timer_label.hide()
 
-        self.back_btn = QPushButton("", self)
-        self.back_btn.setGeometry(flag['BUTTON_EXIT_X'], flag['BUTTON_EXIT_Y'],
-                                  flag['BUTTON_EXIT_WIDTH'], flag['BUTTON_EXIT_HEIGHT'])
-
-        # 버튼 색상 및 스타일 설정
-        # 이 스타일은 모든 QPushButton에 기본적으로 적용됩니다.
-        style = f"""
-            QPushButton {{
-                background-color: "transparent"; 
-                color: #343a40;
-                border-radius: 58px; 
-                font-family: 'Jalnan Gothic', 'Arial', sans-serif;
-                font-size: 20pt; 
-                font-weight: light;
-            }}
-            QPushButton:hover {{
-                background-color: #8FFF84B3; 
-                color: #8f343a40;
-            }}
-            QPushButton:pressed {{
-                background-color: #8FFF84B3; 
-                color: #8f343a40;
-            }}
-        """
-        self.back_btn.setStyleSheet(style)
-        # "메뉴로 돌아가기" 버튼을 이미지로 변경
-        self.back_btn.clicked.connect(self.go_to_main_menu)
-
-        # *** 우측 하단 버튼 스타일 분리를 위한 고유 이름 설정 ***
-        self.back_btn.setObjectName("BottomRightIcon")
-        
-        # 아이콘 이미지 설정
-        icon_path = flag['MAIN_BUTTON_IMAGE']
-        icon_pixmap = QPixmap(icon_path)
-        
-        # QPixmap을 QIcon으로 변환하여 버튼에 설정
-        icon_size = QSize(flag['BUTTON_EXIT_WIDTH'] - flag['BUTTON_EXIT_MARGIN'], flag['BUTTON_EXIT_HEIGHT'] - flag['BUTTON_EXIT_MARGIN'])
-        scaled_icon = icon_pixmap.scaled(
-            icon_size,
-            Qt.KeepAspectRatio,
-            Qt.SmoothTransformation
-        )
-        self.back_btn.setIcon(QIcon(scaled_icon))
-        self.back_btn.setIconSize(scaled_icon.size())
-
-        # *** 우측 하단 버튼에 대한 고유 스타일시트 적용 ***
-        # Object Name을 사용하여 기본 QPushButton 스타일을 덮어씁니다.
-        unique_style = f"""
-            QPushButton#BottomRightIcon {{
-                background-color: transparent; /* 기본 상태: 투명 유지 */
-                border-radius: 20px;
-                border: none;
-                color: transparent; /* 텍스트는 없으므로 투명하게 설정 */
-            }}
-            QPushButton#BottomRightIcon:hover {{
-                background-color: rgba(255, 255, 255, 0.2); /* 마우스 오버 시: 약간의 투명한 흰색 배경 */
-            }}
-            QPushButton#BottomRightIcon:pressed {{
-                background-color: rgba(255, 255, 255, 0.4); /* 클릭 시: 더 진한 투명한 흰색 배경 */
-            }}
-        """
-        # 기존 스타일시트를 덮어쓰고 고유 스타일을 적용합니다.
-        self.back_btn.setStyleSheet(self.back_btn.styleSheet() + unique_style)
+        self.back_btn = create_main_menu_button(self, flag, self.go_to_main_menu)
         
         top_h_layout.addWidget(title, 1)
         top_h_layout.addStretch(1)
@@ -795,13 +734,13 @@ class Game1Screen(QWidget):
                 return idxs
         return [0, 1] # 찾지 못하면 기본값 0 반환
 
-    def start_player2_stream_sequential(self, player_index):
+    def start_player2_stream_sequential(self):
         """P1 워밍업 완료 후 P2 스트림을 시작하고 타이머를 시작합니다."""
         if len(self.video_threads) < 2: 
             index = self.get_available_camera_index()
             thread2 = VideoThread(
                 self.p2_queue,
-                camera_index = index[player_index],
+                camera_index = index[1],
                 emotion_file = self.current_emotion_file,
                 player_index = 1
                 )
@@ -813,20 +752,12 @@ class Game1Screen(QWidget):
             self.video_threads[0].signal_ready.disconnect(self.start_player2_stream_sequential)
             
 
-    def start_workers(self, player_index):
-        if player_index == 0:
-            if not self.p1_worker:
-                self.p1_worker = Process(target=similarity_worker, args=(self.p1_queue, self.p1_max_similarity))
-            if self.p1_worker and not self.p1_worker.is_alive():
-                self.p1_worker.start()
-            self.video_threads[0].signal_ready.disconnect(self.start_workers)
-        elif player_index == 1:
-            if not self.p2_worker:
-                self.p2_worker = Process(target=similarity_worker, args=(self.p2_queue, self.p2_max_similarity))
-            if self.p2_worker and not self.p2_worker.is_alive():
-                self.p2_worker.start()
-            self.video_threads[1].signal_ready.disconnect(self.start_workers)
-        
+    def start_workers(self):
+        if not self.p2_worker:
+            self.p2_worker = Process(target=similarity_worker, args=(self.p2_queue, self.p2_max_similarity))
+        if self.p2_worker and not self.p2_worker.is_alive():
+            self.p2_worker.start()
+        self.video_threads[1].signal_ready.disconnect(self.start_workers)
         print("Similarity Worker Started")
 
         
@@ -850,7 +781,10 @@ class Game1Screen(QWidget):
         thread1.change_pixmap_score_signal.connect(self.update_image_and_score)
         self.video_threads.append(thread1)
         thread1.signal_ready.connect(self.start_player2_stream_sequential)
-        thread1.signal_ready.connect(self.start_workers)
+        if not self.p1_worker:
+            self.p1_worker = Process(target=similarity_worker, args=(self.p1_queue, self.p1_max_similarity))
+        if self.p1_worker and not self.p1_worker.is_alive():
+            self.p1_worker.start()
         thread1.start()
         print(f"웹캠 스트리밍 및 타이머 작동 시작")
     
@@ -870,18 +804,18 @@ class Game1Screen(QWidget):
                     pass
                 thread.stop()
         self.video_threads = []
-        print("웹캠 스트리밍 및 타이머 작동 종료")
-
-    # go_to_main_menu 함수 (수정: 오버레이 버튼 표시)
-    def go_to_main_menu(self):
-        self.stop_video_streams()
         if self.p1_worker and self.p1_worker.is_alive():
             self.p1_worker.terminate()
         if self.p2_worker and self.p2_worker.is_alive():
             self.p2_worker.terminate()
         self.p1_worker = None
         self.p2_worker = None
-        
+        print("웹캠 스트리밍 및 타이머 작동 종료")
+
+    # go_to_main_menu 함수 (수정: 오버레이 버튼 표시)
+    def go_to_main_menu(self):
+        self.is_game_active = False
+        self.stop_video_streams()
         # 1. 게임 타이머 및 정확도 타이머 중지
         if self.game_timer.isActive():
             self.game_timer.stop()

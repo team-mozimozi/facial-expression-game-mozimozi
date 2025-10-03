@@ -173,61 +173,121 @@ class Result3screen(QWidget):
         super().__init__()
         self.stacked_widget = stacked_widget
         self.total_text = " "
+        # self.current_accuracy_text 변수 제거
         self.game_started = False
         self.initUI()
+        
+    def create_custom_button(self, text, x, y, width, height, font_size=20, border_radius=58, bg_color=flag['BUTTON_COLOR']):
+        """Resultscreen에서 가져온 QPushButton 생성 및 스타일 설정 함수"""
+        button = QPushButton(text, self)
+        button.setGeometry(x, y, width, height)
+        style = f"""
+            QPushButton {{
+                background-color: {bg_color}; color: #343A40; border-radius: {border_radius}px;
+                font-family: 'Jalnan Gothic', 'Arial', sans-serif; font-size: {font_size}pt; font-weight: light; border: none;
+            }}
+        """
+        button.setStyleSheet(style)
+        return button
+
+    # Resultscreen의 create_exit_button 로직 (QPushButton, setGeometry)
+    def create_exit_button(self):
+        # 우측 하단 종료 버튼 (QPushButton) 생성
+        self.btn_exit = self.create_custom_button(
+            "", flag['BUTTON_EXIT_X'], flag['BUTTON_EXIT_Y'],
+            flag['BUTTON_EXIT_WIDTH'], flag['BUTTON_EXIT_HEIGHT'],
+            bg_color="transparent"
+        )
+        self.btn_exit.setObjectName("BottomRightIcon")
+        
+        # 아이콘 이미지 설정 및 크기 조정
+        icon_path = flag['BUTTON_EXIT_IMAGE_PATH'] 
+        icon_pixmap = QPixmap(icon_path)
+        icon_size = QSize(
+            int(flag['BUTTON_EXIT_WIDTH'] * 0.8),
+            int(flag['BUTTON_EXIT_HEIGHT'] * 0.8)
+        )
+        scaled_icon = icon_pixmap.scaled(
+            icon_size,
+            Qt.KeepAspectRatio,
+            Qt.SmoothTransformation
+        )
+        self.btn_exit.setIcon(QIcon(scaled_icon))
+        self.btn_exit.setIconSize(scaled_icon.size())
+        
+        # 우측 하단 버튼 고유 스타일시트 적용
+        unique_style = f"""
+            QPushButton#BottomRightIcon {{
+                background-color: transparent; border-radius: 20px; border: none; color: transparent;
+            }}
+            QPushButton#BottomRightIcon:hover {{
+                background-color: rgba(255, 255, 255, 0.2);
+            }}
+            QPushButton#BottomRightIcon:pressed {{
+                background-color: rgba(255, 255, 255, 0.4);
+            }}
+        """
+        self.btn_exit.setStyleSheet(self.btn_exit.styleSheet() + unique_style)
+        
+        # 커서 설정
+        self.btn_exit.setCursor(QCursor(Qt.PointingHandCursor))
+        
+        # 클릭 시 메인 메뉴로 돌아가는 기능 연결
+        self.btn_exit.clicked.connect(self.main_menu_button)
+        
+        return self.btn_exit
 
     def initUI(self):
         self.layout = QVBoxLayout()
         self.layout.addSpacing(30) 
         
+        # Resultscreen의 result_title 디자인/위치와 동일
         self.result_title = QLabel("게임 종료!")
         self.result_title.setFont(QFont('Jalnan 2', 60, QFont.Bold))
         self.result_title.setAlignment(Qt.AlignCenter)
         
-        self.total_label = QLabel("")
-        self.total_label.setFont(QFont('Jalnan 2', 60, QFont.Bold))
-        self.total_label.setStyleSheet("color: blue;")
+        # total_label이 Resultscreen의 winner_label의 역할과 디자인을 대신함
+        # Resultscreen의 winner_label 초기 디자인: Font('Jalnan 2', 60), AlignCenter
+        self.total_label = QLabel("결과 계산 중...") # 초기 텍스트를 Resultscreen의 winner_label과 유사하게 설정
+        self.total_label.setFont(QFont('Jalnan 2', 60)) 
+        self.total_label.setStyleSheet("color: black;") # 초기 색상
         self.total_label.setAlignment(Qt.AlignCenter)
         
-        back_to_menu_button = ClickableLabel()
-        back_to_menu_button.clicked.connect(self.main_menu_button)
-        back_to_menu_button.setScaledContents(True)
+        # current_accuracy_label 제거
 
-        exit_pixmap = QPixmap(flag['MAIN_BUTTON_IMAGE'])
-        if not exit_pixmap.isNull():
-            back_to_menu_button.setPixmap(exit_pixmap)
-            back_to_menu_button.setFixedSize(flag['BUTTON_EXIT_WIDTH']-20, flag['BUTTON_EXIT_HEIGHT']-20)
-            back_to_menu_button.setStyleSheet("background-color: transparent;")
-        else:
-            back_to_menu_button.setText("메인 메뉴로 돌아가기")
-            back_to_menu_button.setFixedSize(flag['BUTTON_EXIT_WIDTH'], flag['BUTTON_EXIT_HEIGHT'])
-            back_to_menu_button.setStyleSheet("background-color: #0AB9FF; color: white; border-radius: 10px;")
+        # Resultscreen 방식의 종료 버튼 추가 (setGeometry 방식)
+        self.create_exit_button()
 
-        h_layout = QHBoxLayout()
-        h_layout.addStretch(1) 
-        h_layout.addWidget(back_to_menu_button)
-        h_layout.addSpacing(20)
-
+        # Resultscreen의 레이아웃 간격 비율 적용: (addStretch 5, title, addStretch 1, winner_label, addStretch 6)
+        self.layout.addStretch(5) 
         self.layout.addWidget(self.result_title)
         self.layout.addStretch(1)
-        self.layout.addWidget(self.total_label)
-        self.layout.addStretch(2)
-        self.layout.addLayout(h_layout)
-        self.layout.addSpacing(10)
-
+        self.layout.addWidget(self.total_label) # winner_label 역할
+        
+        # winner_label 이후의 간격 (Resultscreen에서는 6)
+        self.layout.addStretch(6) 
+        
+        self.layout.addSpacing(10) 
+        
         self.setLayout(self.layout)
 
     def set_results3(self, total_score):
-        self.total_text = f"{total_score}개 맞추셨습니다! "
+        # total_label 업데이트 (Resultscreen의 winner_label 최종 디자인/폰트 크기 50 적용)
+        self.total_text = f"🎉 {total_score}개 맞추셨습니다! 🎉"
+        
         current_font = self.total_label.font()
-        current_font.setPointSize(50)
+        current_font.setPointSize(50) # Resultscreen의 winner_label 최종 폰트 크기 적용
         self.total_label.setFont(current_font)
+        
+        # Resultscreen의 winner_label은 승리 시 'blue'를 사용하므로, 결과 표시에는 'blue'를 사용
+        self.total_label.setStyleSheet("color: blue;") 
+        
         self.total_label.setText(self.total_text)
 
     def main_menu_button(self):
         self.stacked_widget.setCurrentIndex(0)
         return
-
+    
 # 게임 3 GUI
 class Game3Screen(QWidget):
     game_finished = pyqtSignal(int)
@@ -302,7 +362,7 @@ class Game3Screen(QWidget):
 
         # 타이틀 / 메뉴 버튼 레이아웃 (고정)
         top_h_layout = QHBoxLayout()
-        title = QLabel("설명설명설명설 명설명설명설명 설명설명설명설 명설명설명설명")
+        title = QLabel("60초 내에 가능한 한 많은 이모지를 따라 해보세요!")
         title.setFont(QFont('Jalnan Gothic', 20))
         title.setStyleSheet("background-color: 'transparent'; color: #292E32; padding-left: 20px; padding-top: 20px;")
         title.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
@@ -507,9 +567,11 @@ class Game3Screen(QWidget):
         self.time_left -= 1
         self.timer_label.setText(f"{self.time_left}")
         if self.time_left <= 10 and self.time_left > 0:
-            self.timer_label.fill_color = QColor("red")
+            self.timer_label.fill_color = QColor("#FF1E0A")
+            self.timer_label.outline_color = QColor("#FFF315")
         else:
             self.timer_label.fill_color = QColor("#0AB9FF")
+            self.timer_label.outline_color = QColor("#00A4F3")
         self.timer_label.repaint()
         if self.time_left <= 0:
             self.game_timer.stop()
@@ -587,6 +649,9 @@ class Game3Screen(QWidget):
             self.video_thread.stop()
             self.video_thread.wait()
             self.video_thread = None
+        if self.similarity_worker and self.similarity_worker.is_alive():
+            self.similarity_worker.terminate()
+        self.similarity_worker = None
 
     def showEvent(self, event):
         super().showEvent(event)
