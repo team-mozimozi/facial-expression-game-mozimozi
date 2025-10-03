@@ -9,7 +9,9 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer, QSize, QPoint, QPointF
 from PyQt5.QtGui import QImage, QPixmap, QFont, QIcon, QMouseEvent, QPainter, QPainterPath, QColor, QCursor, QPen, QBrush
 from compare import calc_similarity
-from mainmenu import flag # 원본 임포트 유지
+from mainmenu import flag
+from back_button import create_main_menu_button
+from multiprocessing import Queue, Manager, Process
 
 import numpy as np
 
@@ -91,12 +93,30 @@ class ClickableLabel(QLabel):
         self.unsetCursor()
         super().leaveEvent(event)
 
+# 유사도를 계산할 Worker함수
+def similarity_worker(item_queue, similarity_value):
+    while True:
+        item = item_queue.get()
+        if item is None:
+            print("Queue empty!")
+            continue
+        # frame queue에 값이 들어올 때까지 대기
+        frame, emoji = item
+        if frame is None:
+            print(f"Worker terminated.")
+            break
+        try:
+            # 들어온 프레임으로 유사도 계산
+            similarity_value.value = 0 if emoji == "" else calc_similarity(frame, emoji)
+        except:
+            print("유사도 계산 실패!")
 
 # 웹캠 스트림 처리 스레드 (TimeAttack 모드 전용)
 class TimeAttackThread(QThread):
-    change_pixmap_score_signal = pyqtSignal(QImage, float)
+    change_pixmap_signal = pyqtSignal(QImage)
+    signal_ready = pyqtSignal()
 
-    def __init__(self, camera_index, emotion_file, width=flag['VIDEO_WIDTH'], height=flag['VIDEO_HEIGHT']):
+    def __init__(self, item_queue, camera_index, emotion_file, width=flag['VIDEO_WIDTH'], height=flag['VIDEO_HEIGHT']):
         super().__init__()
         self.camera_index = camera_index
         self.running = True
@@ -105,7 +125,7 @@ class TimeAttackThread(QThread):
         self.emotion_file = emotion_file
         self.frame_count = 0
         self.inference_interval = 3
-        self.similarity = 0
+        self.item_queue = item_queue
 
     def set_emotion_file(self, new_emotion_file):
         self.emotion_file = new_emotion_file
@@ -121,13 +141,14 @@ class TimeAttackThread(QThread):
         TARGET_FPS = 30.0
         cap.set(cv2.CAP_PROP_FPS, TARGET_FPS)
 
+        self.signal_ready.emit()
+
         while self.running:
             ret, frame = cap.read()
             if ret:
                 self.frame_count += 1
-                if self.frame_count % self.inference_interval == 1:
-                    self.similarity = calc_similarity(frame, self.emotion_file)
-                    self.frame_count = 0
+                if self.frame_count % self.inference_interval == 0:
+                    self.item_queue.put((frame, self.emotion_file))
                 rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 h, w, ch = rgb_image.shape
                 bytes_per_line = ch * w
@@ -136,7 +157,7 @@ class TimeAttackThread(QThread):
                 )
                 p = convert_to_Qt_format.scaled(self.width, self.height, Qt.KeepAspectRatio)
 
-                self.change_pixmap_score_signal.emit(p, self.similarity)
+                self.change_pixmap_signal.emit(p)
             self.msleep(50)
         if cap.isOpened():
              cap.release()
@@ -221,17 +242,32 @@ class Game3Screen(QWidget):
             if f.lower().endswith(('.png', '.jpg', '.jpeg')) and not f.startswith('.')
         ]
 
-        self.current_emotion_file = None
+        manager = Manager()
+        self.current_accuracy = manager.Value(float, 0.0)
+        self.current_emotion_file = ""
         self.total_score = 0
-        self.target_similarity = 40.0
+        self.target_similarity = 70.0
         self.is_transitioning = False
         self.transition_delay_ms  = 1000
-        self.total_game_time = 5
+        self.total_game_time = 20
         self.time_left = self.total_game_time
         self.game_timer = QTimer(self)
         self.game_timer.timeout.connect(self.update_timer)
         self.game_started = False
 
+        # 유사도 계산을 위한 worker와 queue
+        self.similarity_worker = None
+        self.item_queue = Queue()
+
+        # 성공 이미지 오버레이 관련 멤버 변수
+        self.success_image_path = "design/o.png"
+        self.success_overlay = QLabel(self) # 초기에는 self (Game3Screen)의 자식으로 설정
+        self.success_overlay.setStyleSheet("background-color: transparent;")
+        self.success_timer = QTimer(self)
+        self.success_timer.setSingleShot(True)
+        self.success_timer.timeout.connect(self.hide_success_overlay)
+        # 1초 후 complete_transition이 호출되므로, success_overlay는 여기서 1초 후 숨기면 됩니다.
+    
         self.initUI()
 
     def initUI(self):
@@ -271,24 +307,7 @@ class Game3Screen(QWidget):
         title.setStyleSheet("background-color: 'transparent'; color: #292E32; padding-left: 20px; padding-top: 20px;")
         title.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
-        self.back_btn = QPushButton("", self)
-        self.back_btn.setGeometry(flag['BUTTON_EXIT_X'], flag['BUTTON_EXIT_Y'],
-                                 flag['BUTTON_EXIT_WIDTH'], flag['BUTTON_EXIT_HEIGHT'])
-
-        icon_path = flag['MAIN_BUTTON_IMAGE']
-        icon_pixmap = QPixmap(icon_path)
-        icon_size = QSize(flag['BUTTON_EXIT_WIDTH'] - flag['BUTTON_EXIT_MARGIN'], flag['BUTTON_EXIT_HEIGHT'] - flag['BUTTON_EXIT_MARGIN'])
-        scaled_icon = icon_pixmap.scaled(icon_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-        self.back_btn.setIcon(QIcon(scaled_icon))
-        self.back_btn.setIconSize(scaled_icon.size())
-        self.back_btn.clicked.connect(self.go_to_main_menu)
-        self.back_btn.setObjectName("BottomRightIcon")
-        unique_style = f"""
-            QPushButton#BottomRightIcon {{ background-color: transparent; border-radius: 20px; border: none; color: transparent; }}
-            QPushButton#BottomRightIcon:hover {{ background-color: rgba(255, 255, 255, 0.2); }}
-            QPushButton#BottomRightIcon:pressed {{ background-color: rgba(255, 255, 255, 0.4); }}
-        """
-        self.back_btn.setStyleSheet(unique_style)
+        self.back_btn = create_main_menu_button(self, flag, self.go_to_main_menu)
 
         top_h_layout.addWidget(title, 1)
         top_h_layout.addStretch(1)
@@ -383,12 +402,40 @@ class Game3Screen(QWidget):
         self.video_label.setAlignment(Qt.AlignCenter)
         self.video_label.setFixedSize(flag['VIDEO_WIDTH'], flag['VIDEO_HEIGHT'])
         self.video_label.setStyleSheet("background-color: black; color: white;")
+        
+        # [추가] success_overlay 초기 설정
+        # video_label이 배치된 후에 success_overlay를 video_label의 자식으로 재설정하고 위치를 잡습니다.
+        self.success_overlay.setParent(self.video_label)
+        self.success_overlay.setGeometry(0, 0, self.video_label.width(), self.video_label.height())
+        self.success_overlay.setAlignment(Qt.AlignCenter)
+        self.success_overlay.setScaledContents(True)
+        self.success_overlay.hide()
+        
+        # success_overlay에 이미지 로드
+        pixmap_o = QPixmap(self.success_image_path)
+        if not pixmap_o.isNull():
+            # 웹캠 크기에 맞게 스케일링하거나 원하는 크기로 설정
+            scaled_pixmap = pixmap_o.scaled(
+                self.video_label.size() * 0.5, # 웹캠 크기의 50%로 설정 (원하는 크기로 변경 가능)
+                Qt.KeepAspectRatio, 
+                Qt.SmoothTransformation
+            )
+            self.success_overlay.setPixmap(scaled_pixmap)
+            # 오버레이의 크기를 이미지 크기에 맞게 설정하여 중앙에 위치하도록 조정
+            self.success_overlay.setFixedSize(scaled_pixmap.size())
+            # 부모 위젯 (video_label)의 중앙에 위치하도록 이동
+            x = (self.video_label.width() - self.success_overlay.width()) // 2
+            y = (self.video_label.height() - self.success_overlay.height()) // 2
+            self.success_overlay.move(x, y)
+        else:
+            self.success_overlay.setText("O") # 이미지 로드 실패 시 대체 텍스트
+            self.success_overlay.setStyleSheet("font-size: 100px; color: green; background-color: rgba(0,0,0,100);")
 
         # Accuracy Labels
-        self.current_accuracy = QLabel(f'현재 유사도: {0.00: .2f}%')
-        self.current_accuracy.setFont(QFont('Jalnan Gothic', 25))
-        self.current_accuracy.setStyleSheet("background-color: 'transparent'; color: #292E32; padding-top: 15px;")
-        self.current_accuracy.setAlignment(Qt.AlignCenter)
+        self.current_accuracy_label = QLabel(f'현재 유사도: {self.current_accuracy.value: .2f}%')
+        self.current_accuracy_label.setFont(QFont('Jalnan Gothic', 25))
+        self.current_accuracy_label.setStyleSheet("background-color: 'transparent'; color: #292E32; padding-top: 15px;")
+        self.current_accuracy_label.setAlignment(Qt.AlignCenter)
 
         self.target_label = QLabel(f'목표 유사도: {self.target_similarity:.0f}%')
         self.target_label.setFont(QFont('Jalnan Gothic', 25))
@@ -400,7 +447,7 @@ class Game3Screen(QWidget):
         video_score_layout.addStretch(1)
         video_score_layout.addWidget(self.player_label)
         video_score_layout.addWidget(self.video_label)
-        video_score_layout.addWidget(self.current_accuracy)
+        video_score_layout.addWidget(self.current_accuracy_label)
         video_score_layout.addWidget(self.target_label)
         # 수직 중앙 정렬을 위해 stretch 추가
         video_score_layout.addStretch(1)
@@ -431,16 +478,21 @@ class Game3Screen(QWidget):
         if self.game_started:
             return
         self.game_started = True
+        self.set_next_emotion()
         self.center_widget.findChild(QStackedWidget).setCurrentWidget(self.emotion_label)
         self.timer_label.show()
         self.score_label.show()
-        self.start_stream()
+        self.time_left = self.total_game_time
+        self.timer_label.setText(f"{self.total_game_time}")
+        self.timer_label.repaint()
+        self.game_timer.start(1000)
 
     def set_next_emotion(self):
         if not self.emotion_files: return
         available_emotions = [f for f in self.emotion_files if f != self.current_emotion_file]
         if not available_emotions: available_emotions = self.emotion_files
         self.current_emotion_file = random.choice(available_emotions)
+        self.video_thread.set_emotion_file(self.current_emotion_file)
         file_path = os.path.join(self.EMOJI_DIR, self.current_emotion_file)
         pixmap = QPixmap(file_path)
         if pixmap.isNull():
@@ -463,25 +515,33 @@ class Game3Screen(QWidget):
             self.game_timer.stop()
             self.stop_stream()
             self.timer_label.setText("게임 종료!")
+            self.game_started = False
             self.stacked_widget.findChild(Result3screen).set_results3(self.total_score)
             self.stacked_widget.setCurrentIndex(5)
 
-    def update_image_and_score(self, image, score):
-        pixmap = QPixmap.fromImage(image)
-        self.video_label.setPixmap(pixmap)
-        self.current_accuracy.setText(f'현재 유사도: {score: .2f}%')
-        if score >= self.target_similarity and not self.is_transitioning:
-            self.is_transitioning = True
-            self.total_score += 1
-            self.score_label.setText(f"SCORE: {self.total_score}")
-            self.video_label.setStyleSheet("border: 5px solid #0f0; background-color: black; color: white;")
-            QTimer.singleShot(self.transition_delay_ms, self.complete_transition)
-            self.video_label.setStyleSheet("border: 3px solid #0f0; background-color: black; color: white;")
-            QTimer.singleShot(500, lambda: self.video_label.setStyleSheet("background-color: black; color: white;"))
+    def show_success_overlay(self):
+        self.success_overlay.show()
+        # 1초 후에 hide_success_overlay 호출
+        self.success_timer.start(self.transition_delay_ms) 
 
+    def hide_success_overlay(self):
+        self.success_overlay.hide()
+
+    def update_image_and_score(self, image):
+        if not self.is_transitioning:
+            pixmap = QPixmap.fromImage(image)
+            self.video_label.setPixmap(pixmap)
+            self.current_accuracy_label.setText(f'현재 유사도: {self.current_accuracy.value: .2f}%')
+            if self.current_accuracy.value >= self.target_similarity:
+                self.is_transitioning = True
+                self.total_score += 1
+                self.score_label.setText(f"SCORE: {self.total_score}")
+                self.show_success_overlay()
+                QTimer.singleShot(self.transition_delay_ms, self.complete_transition)
 
     def complete_transition(self):
         self.set_next_emotion()
+        self.current_accuracy.value = 0.0
         self.video_label.setStyleSheet("border: none;")
         self.is_transitioning = False
 
@@ -493,24 +553,29 @@ class Game3Screen(QWidget):
                 return index
         return 0
 
+    def start_similarity_worker(self):
+        if not self.similarity_worker:
+            self.similarity_worker = Process(target=similarity_worker, args=(self.item_queue, self.current_accuracy))
+        if self.similarity_worker and not self.similarity_worker.is_alive():
+            self.similarity_worker.start()
+        self.video_thread.signal_ready.disconnect(self.start_similarity_worker)
+        
+
     def start_stream(self):
-        if not self.game_started: return
         self.stop_stream()
+        self.current_emotion_file = ""
         self.total_score = 0
         self.score_label.setText(f"SCORE: {self.total_score}")
-        self.set_next_emotion()
         self.video_thread = TimeAttackThread(
+            item_queue=self.item_queue,
             camera_index=self.get_available_camera_index(),
             emotion_file=self.current_emotion_file,
             width=flag['VIDEO_WIDTH'],
             height=flag['VIDEO_HEIGHT']
         )
-        self.video_thread.change_pixmap_score_signal.connect(self.update_image_and_score)
+        self.video_thread.change_pixmap_signal.connect(self.update_image_and_score)
+        self.video_thread.signal_ready.connect(self.start_similarity_worker)
         self.video_thread.start()
-        self.time_left = self.total_game_time
-        self.timer_label.setText(f"{self.total_game_time}")
-        self.timer_label.repaint()
-        self.game_timer.start(1000)
 
     def stop_stream(self):
         if self.game_timer.isActive():
@@ -535,9 +600,14 @@ class Game3Screen(QWidget):
         self.timer_label.hide()
         self.score_label.hide()
         self.score_label.setText(f"SCORE: {0}")
-        self.current_accuracy.setText(f'현재 유사도: {0.00: .2f}%')
+        self.current_accuracy_label.setText(f'현재 유사도: {0.00: .2f}%')
+        self.current_accuracy.value = 0.0
         self.video_label.setText(f"웹캠 피드 ({flag['VIDEO_WIDTH']}x{flag['VIDEO_HEIGHT']})")
+        self.current_emotion_file = ""
         self.video_label.setPixmap(QPixmap())
+        if self.similarity_worker and self.similarity_worker.is_alive():
+            self.similarity_worker.terminate()
+        self.similarity_worker = None
 
     def go_to_result_screen(self):
         self.stacked_widget.setCurrentIndex(5)
@@ -546,19 +616,3 @@ class Game3Screen(QWidget):
         self.stop_stream()
         self.reset_game_state()
         self.stacked_widget.setCurrentIndex(0)
-
-# ClickableLabel 도우미 클래스 재사용
-class ClickableLabel(QLabel):
-    clicked = pyqtSignal()
-
-    def mousePressEvent(self, event):
-        self.clicked.emit()
-        super().mousePressEvent(event)
-
-    def enterEvent(self, event: QMouseEvent):
-        self.setCursor(QCursor(Qt.PointingHandCursor))
-        super().enterEvent(event)
-
-    def leaveEvent(self, event: QMouseEvent):
-        self.unsetCursor()
-        super().leaveEvent(event)
