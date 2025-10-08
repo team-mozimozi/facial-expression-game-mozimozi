@@ -721,6 +721,9 @@ class Game1Screen(QWidget):
 
     def get_available_camera_index(self):
         """사용 가능한 가장 낮은 인덱스의 웹캠 번호를 반환합니다."""
+        # 리눅스일 때는 0, 2를 강제 반환
+        if os.name == 'posix':
+            return [0, 2]
         # 0부터 9까지 시도하며, 먼저 열리는 카메라의 인덱스를 반환
         count = 0
         idxs = []

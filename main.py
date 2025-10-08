@@ -12,6 +12,7 @@ from game1 import Game1Screen, Resultscreen
 from game2 import Game2Screen
 from game3 import Game3Screen, Result3screen
 from mainmenu  import MainMenu
+import multiprocessing
 
 # ----------------------------------------------------------------------
 # 5. 앱 전환기 역할을 하는 메인 윈도우
@@ -72,6 +73,10 @@ class AppSwitcher(QMainWindow):
         event.accept()  # 이벤트를 승인하여 창 닫기를 계속 진행합니다.
 
 if __name__ == '__main__':
+    try:
+        multiprocessing.set_start_method('spawn', force=True)
+    except RuntimeError:
+        pass
     app = QApplication(sys.argv)
     ex = AppSwitcher()
     ex.show()
