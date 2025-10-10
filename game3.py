@@ -422,6 +422,23 @@ class Game3Screen(QWidget):
         center_stack_layout.setCurrentWidget(self.start_button)
         self.center_widget.setFixedSize(240, 240)
 
+        self.pass_button = QPushButton("PASS") # 텍스트를 "PASS"로 변경
+        self.pass_button.setFont(QFont('Jalnan 2', 24, QFont.Bold))
+        self.pass_button.setFixedSize(200, 70)
+        self.pass_button.setStyleSheet("""
+            QPushButton {
+                background-color: #FF5CA7; 
+                color: white; 
+                border-radius: 10px;
+            }
+            QPushButton:hover {
+                background-color: #FF77BB;
+            }
+        """)
+        self.pass_button.setCursor(QCursor(Qt.PointingHandCursor))
+        self.pass_button.clicked.connect(self.pass_emotion) # pass_emotion 기능 연결
+        self.pass_button.hide()
+
         # 스코어 레이블
         score_font = QFont('ARCO', 40)
         score_color = QColor("#F85E6F")
@@ -434,9 +451,12 @@ class Game3Screen(QWidget):
 
         # 이모지 컨테이너 레이아웃 구성
         emoji_layout.addWidget(self.timer_label, alignment=Qt.AlignCenter)
-        emoji_layout.addSpacing(20)
+        emoji_layout.addSpacing(10)
         emoji_layout.addWidget(self.center_widget, alignment=Qt.AlignCenter)
-        emoji_layout.addSpacing(50)
+        emoji_layout.addSpacing(10) # 이모지 스택과 버튼 사이 간격 추가
+        emoji_layout.addWidget(self.pass_button, alignment=Qt.AlignCenter) # 중앙 정렬
+        emoji_layout.addSpacing(10) # 버튼과 스코어 레이블 사이 간격 추가
+        emoji_layout.addSpacing(20)
         emoji_layout.addWidget(self.score_label, alignment=Qt.AlignCenter)
         # 수직 중앙 정렬을 위해 stretch 추가
         emoji_layout.addStretch(1)
@@ -542,6 +562,7 @@ class Game3Screen(QWidget):
         self.center_widget.findChild(QStackedWidget).setCurrentWidget(self.emotion_label)
         self.timer_label.show()
         self.score_label.show()
+        self.pass_button.show()
         self.time_left = self.total_game_time
         self.timer_label.setText(f"{self.total_game_time}")
         self.timer_label.repaint()
@@ -562,6 +583,18 @@ class Game3Screen(QWidget):
             self.emotion_label.setPixmap(scaled_pixmap)
         if self.video_thread and self.video_thread.isRunning():
             self.video_thread.set_emotion_file(self.current_emotion_file)
+
+    def pass_emotion(self):
+        """
+        PASS 버튼 클릭 시 호출됩니다.
+        현재 이모지를 성공한 것으로 간주하고 점수를 획득하며 다음 이모지로 전환합니다.
+        """
+        if not self.game_started or self.is_transitioning:
+            return
+            
+        # 유사도 달성과 동일한 전환 로직 시작
+        self.is_transitioning = True
+        QTimer.singleShot(self.transition_delay_ms, self.complete_transition) # 딜레이 후 다음 이모지로 전환
 
     def update_timer(self):
         self.time_left -= 1
@@ -664,6 +697,7 @@ class Game3Screen(QWidget):
         self.emotion_label.hide()
         self.timer_label.hide()
         self.score_label.hide()
+        self.pass_button.hide()
         self.score_label.setText(f"SCORE: {0}")
         self.current_accuracy_label.setText(f'현재 유사도: {0.00: .2f}%')
         self.current_accuracy.value = 0.0
