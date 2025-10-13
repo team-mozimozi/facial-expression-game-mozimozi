@@ -6,6 +6,7 @@ import os
 # MediaPipe 설정 (손의 모양 추출)
 mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(
+    static_image_mode = True,
     max_num_hands = 1,
     min_detection_confidence=0.5,
     min_tracking_confidence = 0.5
@@ -47,7 +48,6 @@ def collect_and_save_data(image_dir, output_csv):
     # 디렉토리 내 파일 목록 순회
     for filename in os.listdir(image_dir):
         if filename.endswith(('.jpg', '.jpeg', '.png')): # 이미지 파일만 처리
-
             # 파일 이름에서 라벨 번호 추출
             try:
                 label = int(filename.split('_')[0])
