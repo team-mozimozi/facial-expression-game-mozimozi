@@ -1,179 +1,180 @@
 import mediapipe as mp
-
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
-from mediapipe.framework.formats import landmark_pb2
 
 import cv2
 import numpy as np
 import os, re
 import pandas as pd
-from person_in_frame import person_in_frame
 
+
+# MediaPipe 설정
 mp_drawing = mp.solutions.drawing_utils
+mp_hands = mp.solutions.hands
+# max_num_hands=1로 설정하여 하나의 손만 인식합니다.
+hands = mp_hands.Hands(max_num_hands=1, min_detection_confidence=0.5, min_tracking_confidence = 0.5)
 
-base_options = python.BaseOptions(model_asset_path='hand_landmarker.task')
-options = vision.HandLandmarkerOptions(base_options=base_options, num_hands=2)
-detector = vision.HandLandmarker.create_from_options(options)
+GESTURE_LABELS = {
+    1: 'FIST',  2: 'PINCH', 3: 'PEACE',
+    4: 'CALL', 5: 'YOU', 6: 'BAD'
+}
 
-def detect_landmark(img):
+# 모양 특징 추출 함수: 관절 각도 계산
+def calculate_joint_angles(joint):
+    v1_indices = [0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19]
+    v2_indices = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
 
-    # img = cv2.imread("./test_yr/peace_person.jpg")
-    # cv2.imshow(img)
+    v1 = joint[v1_indices, :]
+    v2 = joint[v2_indices, :]
 
+    v = v2 - v1 # 20개의 뼈대 벡터 (shape: (20, 3))
+
+    # 벡터 정규화 (크기를 1로 만듦)
+    v = v / np.linalg.norm(v, axis=1)[:, np.newaxis]
+
+    # 관절 각도 15개를 계산하기 위해 인접한 벡터를 선택하는 인덱스 (길이 15)
+    angle_v1_indices = [0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14, 16, 17, 18]
+    angle_v2_indices = [1, 2, 3, 5, 6, 7, 9, 10, 11, 13, 14, 15, 17, 18, 19]
+    
+    # 내적 후 arccos으로 각도 계산 (15개 관절 각도)
+    angle = np.arccos(np.einsum('nt,nt->n',
+        v[angle_v1_indices, :],
+        v[angle_v2_indices, :]
+    ))
+    angle = np.degrees(angle)
+    return angle
+
+# K-NN 모델 로드 및 학습
+def load_gesture_model(csv_path="data_hand.csv"):
+    try:
+        data = np.genfromtxt(csv_path, delimiter=',')
+
+        if data.ndim == 1:
+            # 데이터 행이 1개일 경우 reshape (1, 16)
+            data = data.reshape(1, -1)
+
+        angles = data[:, :-1].astype(np.float32) # 각도 데이터(특징)
+        labels = data[:, -1].astype(np.int32) # 라벨 데이터
+
+        if angles.shape[1] != 15:
+            print(f"오류: CSV 파일의 특징 개수가 15개가 아닙니다. 실제 개수: {angles.shape[1]}")
+            return None
+    
+    except Exception as e:
+        print(f"오류: '{csv_path}' 파일을 로드하거나 처리하는 중 문제가 발생했습니다: {e}")
+        print("data_collector.py를 실행하여 data_hand.csv 파일을 먼저 생성해야 합니다.")
+        return None
+    
+    # k-NN 모델 초기화 및 학습
+    knn = cv2.ml.KNearest_create()
+    knn.train(angles, cv2.ml.ROW_SAMPLE, labels)
+    print(f"k-NN 모델 학습 완료. 총 {len(labels)}개의 데이터 사용")
+    return knn
+
+# 제스처 인식 및 유사도 판별
+def recognize_hand_gesture(img, knn_model, k=3):
+    """
+    입력 이미지에서 손을 감지하고, 관절 각도 추출하여 k-NN 모델로 예측
+    """
+    img_rgb = cv2
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-
-    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=img_rgb)
-
-    detection_result = detector.detect(mp_image)
-
-    annotated_image = img_rgb.copy()
-
-    all_hand_landmarks = []
-
-    for hand_landmarks in detection_result.hand_landmarks:
-        landmarks = []
-        landmark_list = landmark_pb2.NormalizedLandmarkList()
-        for lm in hand_landmarks:
-            landmarks.append([lm.x, lm.y, lm.z])
-            landmark = landmark_list.landmark.add()
-            landmark.x = lm.x
-            landmark.y = lm.y
-            landmark.z = lm.z
-        all_hand_landmarks.append(np.array(landmarks))
-
-        mp_drawing.draw_landmarks(
-            annotated_image,
-            landmark_list,
-            mp.solutions.hands.HAND_CONNECTIONS
-        )
-
-    annotated_bgr = cv2.cvtColor(annotated_image, cv2.COLOR_RGB2BGR)
-
-    # 손 랜드마크 인식 시
-    if len(all_hand_landmarks) > 0:
-        return all_hand_landmarks, annotated_bgr
-    else:
-        # 손 랜드마크를 인식할 수 없으면 None 반환
-        return None, annotated_bgr
+    results = hands.process(img_rgb)
     
-def normalize_landmarks(landmarks):
-    landmarks = np.array(landmarks)
-
-    # 손목 좌표를 원점으로 이동
-    origin = landmarks[0]
-    landmarks -= origin
+    # 예측 결과를 이미지에 시각화하기 위한 복사본
+    annotated_img = img.copy() 
     
-    # 손 크기 측정 (손목 ~ 가운데 손가락 끝 거리)
-    scale = np.linalg.norm(landmarks[12] - landmarks[0])
-    landmarks /= scale
-    return landmarks
+    if results.multi_hand_landmarks:
+        for hand_landmarks in results.multi_hand_landmarks:
+            # 랜드마크 시각화 (빨간 점과 연결선)
+            mp_drawing.draw_landmarks(
+                annotated_img, 
+                hand_landmarks, 
+                mp_hands.HAND_CONNECTIONS,
+                # 랜드마크 스타일 설정
+                mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=2, circle_radius=2), # Green landmarks
+                # 연결선 스타일 설정
+                mp_drawing.DrawingSpec(color=(255, 0, 0), thickness=2, circle_radius=2) # Blue connections
+            )
 
-def mirror_landmarks(landmarks):
-    mirrored = landmarks.copy()
-    mirrored[:, 0] *= -1 # x 좌표 좌우 반전
-    return mirrored
+            # 랜드마크 좌표 추출
+            joint = np.zeros((21, 3))
+            for j, lm in enumerate(hand_landmarks.landmark):
+                joint[j] = [lm.x, lm.y, lm.z]
 
-def calculate_similarity(landmarks1, landmarks2):
-    # 랜드마크 좌표를 1차원 벡터로 변환 후 유클리드 거리 계산
-    diff = landmarks1 - landmarks2
-    distance = np.linalg.norm(diff)
-    return distance
+            # 관절 각도 계산 (15개 특징 벡터)
+            angles = calculate_joint_angles(joint)
+            
+            # k-NN을 이용한 제스처 예측
+            sample = np.array([angles], dtype=np.float32)
+            ret, results, neighbours, dist = knn_model.findNearest(sample, k=k)
+            
+            # 예측된 제스처 ID 및 유사도 정보
+            gesture_id = int(results[0][0])
+            # 가장 가까운 데이터 포인트까지의 거리 (유사도 판별에 사용)
+            min_distance = dist[0][0] 
+            
+            # 랜드마크 0번(손목)의 화면 좌표 계산
+            h, w, _ = annotated_img.shape
+            x = int(hand_landmarks.landmark[0].x * w)
+            y = int(hand_landmarks.landmark[0].y * h)
+            
+            # 텍스트 출력
+            predicted_label = GESTURE_LABELS.get(gesture_id, f'Unknown ID:{gesture_id}')
+            
+            # **유사도 판별 (거리 기반):**
+            # 거리가 낮을수록 유사도가 높습니다. 
+            # 이 threshold 값(예: 50.0)을 조정하여 일치 여부를 판별할 수 있습니다.
+            DISTANCE_THRESHOLD = 50.0 
+            
+            if min_distance < DISTANCE_THRESHOLD:
+                # 유사도 높음 (일치로 간주)
+                display_text = f'{predicted_label} (일치, Dist: {min_distance:.2f})'
+                text_color = (0, 255, 0) # 초록색
+            else:
+                # 유사도 낮음 (불일치)
+                display_text = f'{predicted_label} (불일치, Dist: {min_distance:.2f})'
+                text_color = (0, 0, 255) # 빨간색
+                
+            # 이미지에 결과 텍스트 출력
+            cv2.putText(annotated_img, text=display_text, 
+                        org=(x, y + 20), 
+                        fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.7, 
+                        color=text_color, thickness=2)
 
-def match_hand_pose(user_landmarks, emoji_landmarks, threshold=1.0):
-    user_norm = normalize_landmarks(user_landmarks)
-    emoji_norm = normalize_landmarks(emoji_landmarks)
+            return gesture_id, annotated_img, min_distance
 
-    emoji_mirror = mirror_landmarks(emoji_norm)
-
-    dist_normal = calculate_similarity(user_norm, emoji_norm)
-    dist_mirror = calculate_similarity(user_norm, emoji_mirror)
-
-    dist_min = min(dist_normal, dist_mirror)
-
-    is_match = dist_min < threshold
-    return is_match, dist_min
-
-# 1. 이미지에서 사람 손동작 랜드마크 추출 후 저장하는 함수 (csv 저장 예시)
-def save_hand_landmarks_to_csv(human_dir, csv_path='hand_landmarks.csv'):
-    """
-    human_dir: 사람 손동작 사진 폴더 (ex: 'img_hand/human')
-    csv_path: 저장할 csv 파일 경로
-    """
-    import csv
-    
-    filenames = os.listdir(human_dir)
-    landmarks_data = []
-    labels = []
-    
-    for fname in filenames:
-        if not re.match(r'.*\.(jpg|png|jpeg)$', fname, re.IGNORECASE):
-            continue
-        label = re.sub(r'(\_)(\w+)?(\.\w+)$', '', fname)
-        
-        img_path = os.path.join(human_dir, fname)
-        img = cv2.imread(img_path)
-        
-        hand_landmarks_list, _ = detect_landmark(img)
-        if hand_landmarks_list is None:
-            print(f'손 인식 실패: {fname}')
-            continue
-        
-        # 각 이미지마다 각각 손동작 중 첫 번째 (or 여러 개 중 하나 선택)
-        landmarks = hand_landmarks_list[0].flatten()  # 21 landmarks * 3 coords = 63 길이 배열
-        landmarks_data.append(landmarks)
-        labels.append(label)
-        
-    # CSV 저장: 63개 좌표 + one label column
-    with open(csv_path, 'w', newline='', encoding='utf-8') as f:
-        writer = csv.writer(f)
-        header = [f'coord_{i}' for i in range(len(landmarks_data[0]))] + ['label']
-        writer.writerow(header)
-        for data, label in zip(landmarks_data, labels):
-            writer.writerow(list(data) + [label])
-    print(f'csv 저장 완료: {csv_path}')
-
-# 2. CSV 파일에서 손동작 데이터 읽기
-def load_hand_landmarks_from_csv(csv_path='hand_landmarks.csv'):
-    df = pd.read_csv(csv_path)
-    landmarks_list = []
-    labels = []
-    for _, row in df.iterrows():
-        coords = row[:-1].values.astype(float).reshape(21,3)
-        label = row[-1]
-        landmarks_list.append(coords)
-        labels.append(label)
-    return landmarks_list, labels
-
-# 3. 사용자의 실제 손동작과 csv로부터 읽은 대표 손동작과 비교해 가장 유사한 label 찾기
-def find_best_matching_hand_pose(user_landmarks, landmarks_list, labels, threshold=1.0):
-    best_label = None
-    best_score = float('inf')
-    
-    for landmark, label in zip(landmarks_list, labels):
-        is_match, score = match_hand_pose(user_landmarks, landmark, threshold)
-        if is_match and score < best_score:
-            best_score = score
-            best_label = label
-    return best_label, best_score
-
-# --- 테스트용 예시 ---
+    # 손이 인식되지 않았을 경우
+    return None, annotated_img, None
 
 if __name__ == "__main__":
-    # 1) 한 번만 손동작 사진에서 랜드마크 추출해 csv 저장 (필요시)
-    save_hand_landmarks_to_csv('img_hand/human')
+    # k-NN 모델 로드
+    knn_model = load_gesture_model('data_hand.csv')
+
+    if knn_model is None:
+        exit()
+        
+    TEST_IMAGE_PATH = './test_yr/fist.jpg' 
     
-    # 2) csv에서 손동작 데이터 불러오기
-    landmarks_list, labels = load_hand_landmarks_from_csv()
+    test_img = cv2.imread(TEST_IMAGE_PATH)
     
-    # 단계별로 웹캠 등에서 입력 프레임 받았을 때 사용 예
-    frame = cv2.imread('test_yr/peace_person_one_hand.jpg')  # 테스트용 이미지
-    user_hands, annotated = detect_landmark(frame)
-    if user_hands:
-        user_landmarks = user_hands[0]
-        best_label, best_score = find_best_matching_hand_pose(user_landmarks, landmarks_list, labels)
-        print(f'가장 유사한 손동작: {best_label}, 거리: {best_score}')
-        cv2.putText(annotated, f'Match: {best_label}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
-        cv2.imshow('Result', annotated)
+    if test_img is None:
+        print(f"오류: 테스트 이미지 파일을 찾을 수 없습니다: '{TEST_IMAGE_PATH}'")
+        print("파일 경로를 확인하거나, test_image.jpg 파일을 준비하세요.")
+    else:
+        # 제스처 인식 실행
+        gesture_id, annotated_img, distance = recognize_hand_gesture(test_img, knn_model)
+        
+        if gesture_id is not None:
+            # 예측된 라벨 출력
+            predicted_label = GESTURE_LABELS.get(gesture_id, f'Unknown ID:{gesture_id}')
+            print(f'=====================================================')
+            print(f'인식된 제스처 ID: {gesture_id} ({predicted_label})')
+            print(f'유사도 (최소 거리): {distance:.2f}')
+            print(f'=====================================================')
+        else:
+            print('손 인식 실패 또는 data_hand.csv에 유효한 데이터가 없습니다.')
+
+        # 결과 이미지 표시
+        cv2.imshow('Hand Gesture Recognition Result', annotated_img)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
