@@ -100,7 +100,7 @@ class EmojiMatchThread(QThread):
 
     def run(self):
         # 카메라 인덱스 0이 아닌 경우를 대비해 DSHOW 백엔드 사용
-        cap = cv2.VideoCapture(self.camera_index, cv2.CAP_DSHOW)
+        cap = cv2.VideoCapture(self.camera_index)
 
         if not cap.isOpened():
             print(f"Error: Could not open camera {self.camera_index}. Check index or availability.")
@@ -212,7 +212,7 @@ class Game2Screen(QWidget):
         center_h_layout.setAlignment(Qt.AlignCenter) 
 
         # 웹캠 피드 QLabel
-        self.video_label = QLabel('웹캠 피드 (400x300)')
+        self.video_label = QLabel(f'웹캠 피드 ({flag['VIDEO_WIDTH']}x{flag['VIDEO_HEIGHT']})')
         self.video_label.setAlignment(Qt.AlignCenter)
         self.video_label.setFixedSize(flag['VIDEO_WIDTH'], flag['VIDEO_HEIGHT'])
         self.video_label.setStyleSheet("background-color: black; color: white;")
