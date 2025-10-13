@@ -9,6 +9,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer, QSize, QPoint, QPointF
 from PyQt5.QtGui import QImage, QPixmap, QFont, QIcon, QMouseEvent, QPainter, QPainterPath, QColor, QCursor, QPen, QBrush
 from compare import calc_similarity
+from compare_hand import recognize_hand_gesture
 from mainmenu import flag
 from back_button import create_main_menu_button
 from multiprocessing import Queue, Manager, Process
@@ -107,7 +108,13 @@ def similarity_worker(item_queue, similarity_value):
             break
         try:
             # 들어온 프레임으로 유사도 계산
-            similarity_value.value = 0 if emoji == "" else calc_similarity(frame, emoji)
+            emoji_hands = [
+                f for f in os.listdir('img_hand/emoji')
+                if f.lower().endswith(('.png', '.jpg', '.jpeg')) and not f.startswith('.')
+            ]
+            if emoji in emoji_hands:
+                similarity_value.value = recognize_hand_gesture(frame)
+            else: similarity_value.value = 0 if emoji == "" else calc_similarity(frame, emoji)
         except:
             print("유사도 계산 실패!")
 
@@ -295,13 +302,16 @@ class Game3Screen(QWidget):
         super().__init__()
         self.stacked_widget = stacked_widget
         self.video_thread = None
-        self.EMOJI_DIR = "img/emoji"
-        # FileNotFoundError 처리를 여기서 진행하지 않고 원본 코드 구조 유지
+        self.EMOJI_DIR = "img_hand/emoji"
+        FileNotFoundError # 처리를 여기서 진행하지 않고 원본 코드 구조 유지
         self.emotion_files = [
             f for f in os.listdir(self.EMOJI_DIR)
             if f.lower().endswith(('.png', '.jpg', '.jpeg')) and not f.startswith('.')
         ]
-
+        self.emoji_hands = [
+            f for f in os.listdir('img_hand/emoji')
+            if f.lower().endswith(('.png', '.jpg', '.jpeg')) and not f.startswith('.')
+        ]
         manager = Manager()
         self.current_accuracy = manager.Value(float, 0.0)
         self.current_emotion_file = ""
@@ -575,6 +585,9 @@ class Game3Screen(QWidget):
         self.current_emotion_file = random.choice(available_emotions)
         self.video_thread.set_emotion_file(self.current_emotion_file)
         file_path = os.path.join(self.EMOJI_DIR, self.current_emotion_file)
+        if self.current_emotion_file in self.emoji_hands:
+            file_path = os.path.join('img_hand/emoji', self.current_emotion_file)
+        print(file_path)
         pixmap = QPixmap(file_path)
         if pixmap.isNull():
             self.emotion_label.setText(f"이미지 없음: {self.current_emotion_file}")
