@@ -131,7 +131,7 @@ class TimeAttackThread(QThread):
         self.emotion_file = new_emotion_file
 
     def run(self):
-        cap = cv2.VideoCapture(self.camera_index)
+        cap = cv2.VideoCapture(self.camera_index, cv2.CAP_DSHOW)
         if not cap.isOpened():
             print(f"Error: Could not open camera {self.camera_index}.")
             self.running = False
@@ -309,7 +309,7 @@ class Game3Screen(QWidget):
         self.target_similarity = 70.0
         self.is_transitioning = False
         self.transition_delay_ms  = 1000
-        self.total_game_time = 20
+        self.total_game_time = 60
         self.time_left = self.total_game_time
         self.game_timer = QTimer(self)
         self.game_timer.timeout.connect(self.update_timer)
@@ -631,12 +631,6 @@ class Game3Screen(QWidget):
                 self.is_transitioning = True
                 self.total_score += 1
                 self.score_label.setText(f"SCORE: {self.total_score}")
-                self.video_thread.emotion_file = ""
-                while not self.item_queue.empty():
-                    try:
-                        self.item_queue.get_nowait()
-                    except:
-                        break
                 self.show_success_overlay()
                 QTimer.singleShot(self.transition_delay_ms, self.complete_transition)
 
