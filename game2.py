@@ -212,7 +212,7 @@ class Game2Screen(QWidget):
         center_h_layout.setAlignment(Qt.AlignCenter) 
 
         # 웹캠 피드 QLabel
-        self.video_label = QLabel(f'웹캠 피드 ({flag['VIDEO_WIDTH']}x{flag['VIDEO_HEIGHT']})')
+        self.video_label = QLabel(f'웹캠 피드 ({flag["VIDEO_WIDTH"]}x{flag["VIDEO_HEIGHT"]})')
         self.video_label.setAlignment(Qt.AlignCenter)
         self.video_label.setFixedSize(flag['VIDEO_WIDTH'], flag['VIDEO_HEIGHT'])
         self.video_label.setStyleSheet("background-color: black; color: white;")
