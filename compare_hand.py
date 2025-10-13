@@ -15,8 +15,7 @@ mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(max_num_hands=1, min_detection_confidence=0.5, min_tracking_confidence = 0.5)
 
 GESTURE_LABELS = {
-    1: 'FIST',  2: 'PINCH', 3: 'PEACE',
-    4: 'CALL', 5: 'YOU', 6: 'BAD'
+    1: 'FIST'
 }
 
 # 모양 특징 추출 함수: 관절 각도 계산
