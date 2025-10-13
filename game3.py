@@ -302,7 +302,7 @@ class Game3Screen(QWidget):
         super().__init__()
         self.stacked_widget = stacked_widget
         self.video_thread = None
-        self.EMOJI_DIR = "img/emoji"
+        self.EMOJI_DIR = "img_hand/emoji"
         FileNotFoundError # 처리를 여기서 진행하지 않고 원본 코드 구조 유지
         self.emotion_files = [
             f for f in os.listdir(self.EMOJI_DIR)
@@ -312,7 +312,6 @@ class Game3Screen(QWidget):
             f for f in os.listdir('img_hand/emoji')
             if f.lower().endswith(('.png', '.jpg', '.jpeg')) and not f.startswith('.')
         ]
-        self.emotion_files.extend(self.emoji_hands)
         manager = Manager()
         self.current_accuracy = manager.Value(float, 0.0)
         self.current_emotion_file = ""
