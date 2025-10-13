@@ -309,7 +309,7 @@ class Game3Screen(QWidget):
         self.target_similarity = 70.0
         self.is_transitioning = False
         self.transition_delay_ms  = 1000
-        self.total_game_time = 20
+        self.total_game_time = 60
         self.time_left = self.total_game_time
         self.game_timer = QTimer(self)
         self.game_timer.timeout.connect(self.update_timer)

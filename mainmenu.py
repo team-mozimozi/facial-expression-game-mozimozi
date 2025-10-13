@@ -118,15 +118,15 @@ class MainMenu(QWidget):
         # 메인 버튼 (ClickableLabel)
         self.btn1 = self.create_mode_label(
             flag['BUTTON_LABELS'][0], flag['BUTTON1_X'], flag['BUTTON1_Y'],
-            flag['BUTTON_WIDTH'], flag['BUTTON_HEIGHT'], font_size=20, border_radius=58
+            flag['BUTTON_WIDTH'], flag['BUTTON_HEIGHT'], font_size=25, border_radius=58
         )
         self.btn2 = self.create_mode_label(
             flag['BUTTON_LABELS'][1], flag['BUTTON2_X'], flag['BUTTON1_Y'],
-            flag['BUTTON_WIDTH'], flag['BUTTON_HEIGHT'], font_size=20, border_radius=58
+            flag['BUTTON_WIDTH'], flag['BUTTON_HEIGHT'], font_size=25, border_radius=58
         )
         self.btn3 = self.create_mode_label(
             flag['BUTTON_LABELS'][2], flag['BUTTON3_X'], flag['BUTTON1_Y'],
-            flag['BUTTON_WIDTH'], flag['BUTTON_HEIGHT'], font_size=20, border_radius=58
+            flag['BUTTON_WIDTH'], flag['BUTTON_HEIGHT'], font_size=25, border_radius=58
         )
 
         # 우측 하단 종료 버튼 (QPushButton)
@@ -176,20 +176,20 @@ class MainMenu(QWidget):
         self.btn3.clicked.connect(self.game3)
         self.btn_exit.clicked.connect(self.exit)
 
-    def create_custom_button(self, text, x, y, width, height, font_size=20, border_radius=58, bg_color=flag['BUTTON_COLOR']):
+    def create_custom_button(self, text, x, y, width, height, font_size=30, border_radius=58, bg_color=flag['BUTTON_COLOR']):
         """QPushButton (우측 하단 아이콘용)을 생성하고 스타일을 설정합니다."""
         button = QPushButton(text, self)
         button.setGeometry(x, y, width, height)
         style = f"""
             QPushButton {{
                 background-color: {bg_color}; color: #343a40; border-radius: {border_radius}px; 
-                font-family: 'Jalnan Gothic', 'Arial', sans-serif; font-size: {font_size}pt; font-weight: light; border: none;
+                font-family: 'Jalnan 2', 'Arial', sans-serif; font-size: {font_size}pt; font-weight: light; border: none;
             }}
         """
         button.setStyleSheet(style)
         return button
 
-    def create_mode_label(self, text, x, y, width, height, font_size=20, border_radius=58):
+    def create_mode_label(self, text, x, y, width, height, font_size=30, border_radius=58):
         """ClickableLabel을 생성하고 QPushButton 스타일을 모방하여 적용합니다."""
         label = ClickableLabel(text, self)
         label.setGeometry(x, y, width, height)
@@ -200,7 +200,7 @@ class MainMenu(QWidget):
                 background-color: {ClickableLabel.NORMAL_COLOR}; /* 초기 상태 투명 */
                 color: #343a40; 
                 border-radius: {border_radius}px;
-                font-family: 'Jalnan Gothic', 'Arial', sans-serif;
+                font-family: 'Jalnan 2', 'Arial', sans-serif;
                 font-size: {font_size}pt; 
                 font-weight: light;
             }}
