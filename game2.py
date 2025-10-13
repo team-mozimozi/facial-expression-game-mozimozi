@@ -179,7 +179,7 @@ class Game2Screen(QWidget):
 
         # 상단 레이아웃
         top_h_layout = QHBoxLayout()
-        title = QLabel("찰칵! 버튼을 누르시면 본인과 닮은 이모지를 추천해드립니다!")
+        title = QLabel("카메라 버튼을 누르시면 본인과 닮은 이모지를 추천해드립니다!")
         title.setFont(QFont('Jalnan Gothic', 20))
         title.setStyleSheet("background-color: 'transparent'; color: #292E32; padding-left: 20px; padding-top: 20px;")
         title.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
@@ -212,7 +212,7 @@ class Game2Screen(QWidget):
         center_h_layout.setAlignment(Qt.AlignCenter) 
 
         # 웹캠 피드 QLabel
-        self.video_label = QLabel(f'웹캠 피드 ({flag["VIDEO_WIDTH"]}x{flag["VIDEO_HEIGHT"]})')
+        self.video_label = QLabel(f'웹캠 피드 ({flag['VIDEO_WIDTH']}x{flag['VIDEO_HEIGHT']})')
         self.video_label.setAlignment(Qt.AlignCenter)
         self.video_label.setFixedSize(flag['VIDEO_WIDTH'], flag['VIDEO_HEIGHT'])
         self.video_label.setStyleSheet("background-color: black; color: white;")
@@ -260,7 +260,7 @@ class Game2Screen(QWidget):
         self.emoji_stack.addWidget(self.emoji_image) # 인덱스 1: 이모지 결과
         
         # 유사도 라벨
-        self.similarity_label = QLabel('📸 찰칵! 버튼을 눌러주세요 📸')
+        self.similarity_label = QLabel('📷 카메라 버튼을 눌러주세요! 찰칵~ 📷')
         self.similarity_label.setFont(QFont('Jalnan 2', 30))
         self.similarity_label.setStyleSheet("color: #323232;")
         self.similarity_label.setAlignment(Qt.AlignCenter)
@@ -372,6 +372,7 @@ class Game2Screen(QWidget):
             cap = cv2.VideoCapture(index)
             if cap.isOpened():
                 cap.release()
+                print(f"camera {index} available")
                 return index
         return 0 # 찾지 못하면 기본값 0 반환
 
@@ -412,7 +413,7 @@ class Game2Screen(QWidget):
         """이모티콘을 숨기고, 캡처 버튼을 다시 표시하며, 유사도 텍스트를 초기화한 후 스트리밍을 시작합니다."""
         print("게임 재시작 (다시하기) 요청")
         # 유사도 텍스트 초기화
-        self.similarity_label.setText('📸 찰칵! 버튼을 눌러주세요 📸')
+        self.similarity_label.setText('📷 카메라 버튼을 눌러주세요! 찰칵~ 📷')
         
         # 스트리밍 다시 시작 (내부적으로 stop_stream 호출 후 start_stream 호출)
         self.start_stream() 
@@ -420,7 +421,7 @@ class Game2Screen(QWidget):
 
     def go_to_main_menu(self):
         self.stop_stream()
-        self.similarity_label.setText('📸 찰칵! 버튼을 눌러주세요 📸')
+        self.similarity_label.setText('📷 카메라 버튼을 눌러주세요! 찰칵~ 📷')
         self.stacked_widget.setCurrentIndex(0)
 
     def capture_and_match(self):

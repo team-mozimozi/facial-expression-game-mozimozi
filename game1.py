@@ -336,7 +336,7 @@ class Game1Screen(QWidget):
         
         # 타이틀/메뉴 버튼 레이아웃
         top_h_layout = QHBoxLayout()
-        title = QLabel("60초 내에 이모지의 표정을 더 잘 따라한 사람이 하트를 받고, 먼저 하트 3개를 모으면 승리합니다!")
+        title = QLabel("10초 내에 이모지의 표정을 더 잘 따라한 사람이 하트를 받고, 먼저 하트 3개를 모으면 승리합니다!")
         title.setFont(QFont('Jalnan Gothic', 20))
         title.setStyleSheet("background-color: 'transparent'; color: #292E32; padding-left: 20px; padding-top: 20px;")
         title.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
