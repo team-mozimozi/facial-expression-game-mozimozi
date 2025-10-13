@@ -181,11 +181,12 @@ class Resultscreen(QWidget):
         style = f"""
             QPushButton {{
                 background-color: {bg_color}; color: #343A40; border-radius: {border_radius}px;
-                font-family: 'Jalnan Gothic', 'Arial', sans-serif; font-size: {font_size}pt; font-weight: light; border: none;
+                font-family: 'Jalnan Gothic', 'Jalnan Gothic TTF', 'Arial', sans-serif; font-size: {font_size}pt; font-weight: light; border: none;
             }}
         """
         button.setStyleSheet(style)
         return button
+    
     def create_exit_button(self):
         # 우측 하단 종료 버튼 (QPushButton) 생성
         self.btn_exit = self.create_custom_button(
@@ -226,14 +227,19 @@ class Resultscreen(QWidget):
         # 클릭 시 Index 1로 돌아가는 기능 연결 (요청 사항 반영)
         self.btn_exit.clicked.connect(self.go_to_index_0)
         return self.btn_exit
+
     def initUI(self):
         self.layout = QVBoxLayout(self)
         self.layout.addSpacing(30)
         self.result_title = QLabel("게임 종료!")
-        self.result_title.setFont(QFont('Jalnan 2', 60, QFont.Bold))
+        font_title = QFont('Jalnan 2', 60, QFont.Bold)
+        font_title.setFamilies(['Jalnan 2', 'Jalnan 2 TTF'])
+        self.result_title.setFont(font_title)
         self.result_title.setAlignment(Qt.AlignCenter)
         self.winner_label = QLabel("결과 계산 중...")
-        self.winner_label.setFont(QFont('Jalnan 2', 60))
+        font_winner_init = QFont('Jalnan 2', 60)
+        font_winner_init.setFamilies(['Jalnan 2', 'Jalnan 2 TTF'])
+        self.winner_label.setFont(font_winner_init)
         self.winner_label.setAlignment(Qt.AlignCenter)
         self.layout.addStretch(5)
         self.layout.addWidget(self.result_title)
@@ -241,18 +247,22 @@ class Resultscreen(QWidget):
         self.layout.addWidget(self.winner_label)
         self.layout.addStretch(6)
         self.create_exit_button()
+
     def set_results(self, p1_score, p2_score):
+        font_result = QFont('Jalnan 2', 50)
+        font_result.setFamilies(['Jalnan 2', 'Jalnan 2 TTF'])
+        
         if p1_score > p2_score:
             self.winner_text = f"🎉 PLAYER 1 승리! 🎉 \n P1: {p1_score:.0f}점 / P2: {p2_score:.0f}점"
-            self.winner_label.setFont(QFont('Jalnan 2', 50))
+            self.winner_label.setFont(font_result)
             self.winner_label.setStyleSheet("color: blue;")
         elif p2_score > p1_score:
             self.winner_text = f"🎉 PLAYER 2 승리! 🎉 \n P1: {p1_score:.0f}점 / P2: {p2_score:.0f}점"
-            self.winner_label.setFont(QFont('Jalnan 2', 50))
+            self.winner_label.setFont(font_result)
             self.winner_label.setStyleSheet("color: blue;")
         else:
             self.winner_text = f"🤝 무승부입니다! 🤝 \n P1: {p1_score:.0f}점 / P2: {p2_score:.0f}점"
-            self.winner_label.setFont(QFont('Jalnan 2', 50))
+            self.winner_label.setFont(font_result)
             self.winner_label.setStyleSheet("color: black;")
         self.winner_label.setText(self.winner_text)
     def go_to_index_0(self):
@@ -316,6 +326,7 @@ class Game1Screen(QWidget):
         
         # 상단 Mode1 바
         font = QFont('ARCO', 30, QFont.Bold)
+        font.setFamilies(['ARCO', 'Jalnan Gothic', 'Jalnan 2 TTF'])
         fill_color = QColor("#FF5CA7")
         outline_color = QColor("#FFF0FA")
         outline_width = 3.5
