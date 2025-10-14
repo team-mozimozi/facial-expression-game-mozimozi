@@ -94,7 +94,8 @@ class ClickableLabel(QLabel):
         super().leaveEvent(event)
 
 # 유사도를 계산할 Worker함수
-def similarity_worker(item_queue, similarity_value):
+# stop_event 인자를 추가합니다.
+def similarity_worker(item_queue, similarity_value, stop_event):
     while True:
         item = item_queue.get()
         if item is None:
@@ -306,14 +307,18 @@ class Game3Screen(QWidget):
             if f.lower().endswith(('.png', '.jpg', '.jpeg')) and not f.startswith('.')
         ]
 
-        manager = Manager()
-        self.current_accuracy = manager.Value(float, 0.0)
+         # Manager 객체를 인스턴스 멤버 변수로 선언하여 AttributeError 해결
+        self.manager = Manager() 
+        
+        # self.manager를 사용하여 공유 값 및 Queue를 생성
+        self.current_accuracy = self.manager.Value(float, 0.0)
+        
         self.current_emotion_file = ""
         self.total_score = 0
         self.target_similarity = 70.0
         self.is_transitioning = False
-        self.transition_delay_ms  = 1000
-        self.total_game_time = 60
+        self.transition_delay_ms  = 2000
+        self.total_game_time = 30
         self.time_left = self.total_game_time
         self.game_timer = QTimer(self)
         self.game_timer.timeout.connect(self.update_timer)
@@ -321,7 +326,13 @@ class Game3Screen(QWidget):
 
         # 유사도 계산을 위한 worker와 queue
         self.similarity_worker = None
-        self.item_queue = Queue()
+        # self.manager.Queue()를 사용하여 프로세스 간 통신을 확보
+        self.item_queue = self.manager.Queue() 
+        
+        # 클린 종료를 위한 이벤트 객체 추가
+        self.stop_event = self.manager.Event() 
+
+
 
         # 성공 이미지 오버레이 관련 멤버 변수
         self.success_image_path = "design/o.png"
@@ -671,7 +682,9 @@ class Game3Screen(QWidget):
 
     def start_similarity_worker(self):
         if not self.similarity_worker:
-            self.similarity_worker = Process(target=similarity_worker, args=(self.item_queue, self.current_accuracy))
+            self.stop_event.clear() # 새 게임 시작 전 이벤트 초기화 (보험용)
+            # stop_event를 인자로 전달하여 클린 종료를 지원
+            self.similarity_worker = Process(target=similarity_worker, args=(self.item_queue, self.current_accuracy, self.stop_event)) 
         if self.similarity_worker and not self.similarity_worker.is_alive():
             self.similarity_worker.start()
         self.video_thread.signal_ready.disconnect(self.start_similarity_worker)
@@ -698,14 +711,23 @@ class Game3Screen(QWidget):
             self.game_timer.stop()
         if self.video_thread and self.video_thread.isRunning():
             try:
-                self.video_thread.change_pixmap_score_signal.disconnect(self.update_image_and_score)
+                self.video_thread.change_pixmap_signal.disconnect(self.update_image_and_score)
             except Exception: pass
             self.video_thread.stop()
             self.video_thread.wait()
             self.video_thread = None
+            
+        # 클린 종료 로직 적용: None 신호를 큐에 넣어 worker를 깨우고 종료
         if self.similarity_worker and self.similarity_worker.is_alive():
-            self.similarity_worker.terminate()
-        self.similarity_worker = None
+            # 큐에 None 신호를 넣어 blocking된 worker를 깨우고 exit합니다.
+            self.item_queue.put((None, None))
+            # worker가 종료되기를 기다립니다. (timeout 1초)
+            self.similarity_worker.join(timeout=1) 
+            # 1초 후에도 살아있다면 강제 종료 (보험)
+            if self.similarity_worker.is_alive():
+                self.similarity_worker.terminate()
+                
+        self.similarity_worker = None #None 처리 필수
 
     def showEvent(self, event):
         super().showEvent(event)
@@ -725,9 +747,15 @@ class Game3Screen(QWidget):
         self.video_label.setText(f"웹캠 피드 ({flag['VIDEO_WIDTH']}x{flag['VIDEO_HEIGHT']})")
         self.current_emotion_file = ""
         self.video_label.setPixmap(QPixmap())
+        
+        # 클린 종료 로직 적용
         if self.similarity_worker and self.similarity_worker.is_alive():
-            self.similarity_worker.terminate()
-        self.similarity_worker = None
+            self.item_queue.put((None, None))
+            self.similarity_worker.join(timeout=1)
+            if self.similarity_worker.is_alive():
+                self.similarity_worker.terminate()
+                
+        self.similarity_worker = None #None 처리 필수
 
     def go_to_result_screen(self):
         self.stacked_widget.setCurrentIndex(5)
