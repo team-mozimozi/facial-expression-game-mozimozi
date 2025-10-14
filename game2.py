@@ -180,7 +180,9 @@ class Game2Screen(QWidget):
         # 상단 레이아웃
         top_h_layout = QHBoxLayout()
         title = QLabel("카메라 버튼을 누르시면 본인과 닮은 이모지를 추천해드립니다!")
-        title.setFont(QFont('Jalnan Gothic', 20))
+        font_title_label = QFont('Jalnan Gothic', 20)
+        font_title_label.setFamilies(['Jalnan Gothic', 'Jalnan Gothic TTF'])
+        title.setFont(font_title_label)
         title.setStyleSheet("background-color: 'transparent'; color: #292E32; padding-left: 20px; padding-top: 20px;")
         title.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
@@ -259,15 +261,20 @@ class Game2Screen(QWidget):
         self.emoji_stack.addWidget(self.capture_btn) # 인덱스 0: 캡처 버튼 (초기 화면)
         self.emoji_stack.addWidget(self.emoji_image) # 인덱스 1: 이모지 결과
         
-        # 유사도 라벨
+        # 설명 라벨
+        font_sim = QFont('Jalnan 2', 30)
+        font_sim.setFamilies(['Jalnan 2', 'Jalnan 2 TTF'])        
         self.similarity_label = QLabel('📷 카메라 버튼을 눌러주세요! 찰칵~ 📷')
-        self.similarity_label.setFont(QFont('Jalnan 2', 30))
+        self.similarity_label.setFont(font_sim)
         self.similarity_label.setStyleSheet("color: #323232;")
         self.similarity_label.setAlignment(Qt.AlignCenter)
         
         # 다시하기 버튼
+        font_retry_btn = QFont('Jalnan 2', 24, QFont.Bold)
+        font_retry_btn.setFamilies(['Jalnan 2', 'Jalnan 2 TTF'])
+        
         self.retry_btn = QPushButton("다시하기")
-        self.retry_btn.setFont(QFont('Jalnan 2', 24, QFont.Bold))
+        self.retry_btn.setFont(font_retry_btn)
         self.retry_btn.setFixedSize(200, 70)
         self.retry_btn.setStyleSheet("""
             QPushButton {
