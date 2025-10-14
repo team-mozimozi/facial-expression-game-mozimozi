@@ -200,7 +200,7 @@ class MainMenu(QWidget):
                 background-color: {ClickableLabel.NORMAL_COLOR}; /* 초기 상태 투명 */
                 color: #343a40; 
                 border-radius: {border_radius}px;
-                font-family: 'Jalnan 2', 'Arial', sans-serif;
+                font-family: 'Jalnan 2', 'Jalnan 2 TTF', sans-serif;
                 font-size: {font_size}pt; 
                 font-weight: light;
             }}
