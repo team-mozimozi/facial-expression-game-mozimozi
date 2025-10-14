@@ -176,6 +176,19 @@ class Result3screen(QWidget):
         self.total_text = " "
         # self.current_accuracy_text 변수 제거
         self.game_started = False
+        bg_image_path = 'design/page_result.png' 
+        self.setObjectName("Resultscreen") # self = result_screen의 역할
+        self.setStyleSheet(f"""
+            QWidget#Resultscreen {{
+                background-image: url("{bg_image_path}");
+                background-repeat: no-repeat;
+                background-position: center;
+                background-size: cover; /* 이미지를 위젯 크기에 맞게 채웁니다. */
+                border: none;
+            }}
+            QLabel {{ background-color: transparent; }} /* 자식 위젯 투명화 */
+        """)
+        self.setAttribute(Qt.WA_StyledBackground, True)
         self.initUI()
         
     def create_custom_button(self, text, x, y, width, height, font_size=20, border_radius=58, bg_color=flag['BUTTON_COLOR']):
@@ -246,6 +259,7 @@ class Result3screen(QWidget):
         self.result_title = QLabel("게임 종료!")
         font_title_3 = QFont('Jalnan 2', 60, QFont.Bold)
         font_title_3.setFamilies(['Jalnan 2', 'Jalnan 2 TTF'])
+        self.result_title.setStyleSheet("color: #FF822E;")
         self.result_title.setFont(font_title_3)
         self.result_title.setAlignment(Qt.AlignCenter)
         
@@ -279,14 +293,10 @@ class Result3screen(QWidget):
     def set_results3(self, total_score):
         # total_label 업데이트 (Resultscreen의 winner_label 최종 디자인/폰트 크기 50 적용)
         self.total_text = f"🎉 {total_score}개 맞추셨습니다! 🎉"
-        
         current_font = self.total_label.font()
         current_font.setPointSize(50) # Resultscreen의 winner_label 최종 폰트 크기 적용
         self.total_label.setFont(current_font)
-        
-        # Resultscreen의 winner_label은 승리 시 'blue'를 사용하므로, 결과 표시에는 'blue'를 사용
-        self.total_label.setStyleSheet("color: blue;") 
-        
+        self.total_label.setStyleSheet("color: #44A8EF;")       
         self.total_label.setText(self.total_text)
 
     def main_menu_button(self):
@@ -318,7 +328,7 @@ class Game3Screen(QWidget):
         self.target_similarity = 70.0
         self.is_transitioning = False
         self.transition_delay_ms  = 2000
-        self.total_game_time = 30
+        self.total_game_time = 5
         self.time_left = self.total_game_time
         self.game_timer = QTimer(self)
         self.game_timer.timeout.connect(self.update_timer)

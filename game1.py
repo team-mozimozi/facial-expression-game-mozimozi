@@ -234,6 +234,7 @@ class Resultscreen(QWidget):
         self.result_title = QLabel("게임 종료!")
         font_title = QFont('Jalnan 2', 60, QFont.Bold)
         font_title.setFamilies(['Jalnan 2', 'Jalnan 2 TTF'])
+        self.result_title.setStyleSheet("color: #FF822E;")
         self.result_title.setFont(font_title)
         self.result_title.setAlignment(Qt.AlignCenter)
         self.winner_label = QLabel("결과 계산 중...")
@@ -255,15 +256,15 @@ class Resultscreen(QWidget):
         if p1_score > p2_score:
             self.winner_text = f"🎉 PLAYER 1 승리! 🎉 \n P1: {p1_score:.0f}점 / P2: {p2_score:.0f}점"
             self.winner_label.setFont(font_result)
-            self.winner_label.setStyleSheet("color: blue;")
+            self.winner_label.setStyleSheet("color: #44A8EF;")
         elif p2_score > p1_score:
             self.winner_text = f"🎉 PLAYER 2 승리! 🎉 \n P1: {p1_score:.0f}점 / P2: {p2_score:.0f}점"
             self.winner_label.setFont(font_result)
-            self.winner_label.setStyleSheet("color: blue;")
+            self.winner_label.setStyleSheet("color: #44A8EF;")
         else:
             self.winner_text = f"🤝 무승부입니다! 🤝 \n P1: {p1_score:.0f}점 / P2: {p2_score:.0f}점"
             self.winner_label.setFont(font_result)
-            self.winner_label.setStyleSheet("color: black;")
+            self.winner_label.setStyleSheet("color: #44A8EF;")
         self.winner_label.setText(self.winner_text)
     def go_to_index_0(self):
         """결과창을 닫고 메인화면으로 전환"""
@@ -685,6 +686,19 @@ class Game1Screen(QWidget):
                     
                     result_screen = self.stacked_widget.findChild(Resultscreen)
                     if result_screen:
+                        bg_image_path = 'design/page_result.png' 
+                        result_screen.setObjectName("Resultscreen")
+                        result_screen.setStyleSheet(f"""
+                            QWidget#Resultscreen {{
+                                background-image: url("{bg_image_path}");
+                                background-repeat: no-repeat;
+                                background-position: center;
+                                background-size: cover; /* 이미지를 위젯 크기에 맞게 채웁니다. */
+                                border: none;
+                            }}
+                            QLabel {{ background-color: transparent; }} /* 자식 위젯 투명화 */
+                        """)
+                        result_screen.setAttribute(Qt.WA_StyledBackground, True)
                         final_p1_score = self.p1_score
                         final_p2_score = self.p2_score
                         result_screen.set_results(final_p1_score, final_p2_score)
