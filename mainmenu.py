@@ -183,7 +183,7 @@ class MainMenu(QWidget):
         style = f"""
             QPushButton {{
                 background-color: {bg_color}; color: #343a40; border-radius: {border_radius}px; 
-                font-family: 'Jalnan 2', 'Arial', sans-serif; font-size: {font_size}pt; font-weight: light; border: none;
+                font-family: 'Jalnan 2', 'Jalnan 2 TTF', sans-serif; font-size: {font_size}pt; font-weight: light; border: none;
             }}
         """
         button.setStyleSheet(style)

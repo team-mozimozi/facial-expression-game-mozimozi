@@ -329,6 +329,8 @@ class Game1Screen(QWidget):
         font.setFamilies(['ARCO', 'Jalnan Gothic', 'Jalnan 2 TTF'])
         fill_color = QColor("#FF5CA7")
         outline_color = QColor("#FFF0FA")
+
+
         outline_width = 3.5
         
         mode_bar = OutlinedLabel(
@@ -348,12 +350,16 @@ class Game1Screen(QWidget):
         # 타이틀/메뉴 버튼 레이아웃
         top_h_layout = QHBoxLayout()
         title = QLabel("10초 내에 이모지의 표정을 더 잘 따라한 사람이 하트를 받고, 먼저 하트 3개를 모으면 승리합니다!")
-        title.setFont(QFont('Jalnan Gothic', 20))
+        font_title_label = QFont('Jalnan Gothic', 20)
+        font_title_label.setFamilies(['Jalnan Gothic', 'Jalnan Gothic TTF'])
+        title.setFont(font_title_label)
         title.setStyleSheet("background-color: 'transparent'; color: #292E32; padding-left: 20px; padding-top: 20px;")
+        
         title.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         
         # 타이머 레이블은 여전히 여기서 인스턴스화
         timer_font = QFont('Jalnan 2', 40)
+        timer_font.setFamilies(['Jalnan 2', 'Jalnan 2 TTF'])
         timer_fill_color = QColor("#0AB9FF")
         timer_outline_color = QColor("#00A4F3")
         timer_outline_width = 2.0
@@ -448,12 +454,13 @@ class Game1Screen(QWidget):
         self.player1_video.setStyleSheet("background-color: black; color: white;")
         player1_v_layout.addWidget(self.player1_video, alignment=Qt.AlignCenter)
         
+        font_p1ayer_acc = QFont('Jalnan Gothic', 25)
+        font_p1ayer_acc.setFamilies(['Jalnan Gothic', 'Jalnan Gothic TTF'])        
         self.player1_accuracy = QLabel(f'P1 정확도: {self.p1_score: .2f}%')
-        self.player1_accuracy.setFont(QFont('Jalnan Gothic', 25))
+        self.player1_accuracy.setFont(font_p1ayer_acc)
         self.player1_accuracy.setStyleSheet("background-color: 'transparent'; color: #292E32; padding-top: 20px;")
         self.player1_accuracy.setAlignment(Qt.AlignCenter)
         player1_v_layout.addWidget(self.player1_accuracy, alignment=Qt.AlignCenter)
-        player1_v_layout.addSpacing(15)
         
         p1_score_h_layout = QHBoxLayout()
         p1_score_h_layout.addStretch(1)
@@ -487,9 +494,9 @@ class Game1Screen(QWidget):
         self.player2_video.setFixedSize(flag['VIDEO_WIDTH'], flag['VIDEO_HEIGHT'])
         self.player2_video.setStyleSheet("background-color: black; color: white;")
         player2_v_layout.addWidget(self.player2_video, alignment=Qt.AlignCenter)
-
-        self.player2_accuracy = QLabel(f'P2 정확도: {self.p2_score: .2f}%')
-        self.player2_accuracy.setFont(QFont('Jalnan Gothic', 25))
+       
+        self.player2_accuracy = QLabel(f'P2 정확도: {self.p1_score: .2f}%')
+        self.player2_accuracy.setFont(font_p1ayer_acc)
         self.player2_accuracy.setStyleSheet("background-color: 'transparent'; color: #292E32; padding-top: 20px;")
         self.player2_accuracy.setAlignment(Qt.AlignCenter)
         player2_v_layout.addWidget(self.player2_accuracy, alignment=Qt.AlignCenter)

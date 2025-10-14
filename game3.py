@@ -184,7 +184,7 @@ class Result3screen(QWidget):
         style = f"""
             QPushButton {{
                 background-color: {bg_color}; color: #343A40; border-radius: {border_radius}px;
-                font-family: 'Jalnan Gothic', 'Arial', sans-serif; font-size: {font_size}pt; font-weight: light; border: none;
+                font-family: 'Jalnan Gothic', 'Jalnan Gothic TTF', 'Arial', sans-serif; font-size: {font_size}pt; font-weight: light; border: none;
             }}
         """
         button.setStyleSheet(style)
@@ -243,13 +243,17 @@ class Result3screen(QWidget):
         
         # Resultscreen의 result_title 디자인/위치와 동일
         self.result_title = QLabel("게임 종료!")
-        self.result_title.setFont(QFont('Jalnan 2', 60, QFont.Bold))
+        font_title_3 = QFont('Jalnan 2', 60, QFont.Bold)
+        font_title_3.setFamilies(['Jalnan 2', 'Jalnan 2 TTF'])
+        self.result_title.setFont(font_title_3)
         self.result_title.setAlignment(Qt.AlignCenter)
         
         # total_label이 Resultscreen의 winner_label의 역할과 디자인을 대신함
         # Resultscreen의 winner_label 초기 디자인: Font('Jalnan 2', 60), AlignCenter
         self.total_label = QLabel("결과 계산 중...") # 초기 텍스트를 Resultscreen의 winner_label과 유사하게 설정
-        self.total_label.setFont(QFont('Jalnan 2', 60)) 
+        font_total_init = QFont('Jalnan 2', 60)
+        font_total_init.setFamilies(['Jalnan 2', 'Jalnan 2 TTF'])
+        self.total_label.setFont(font_total_init) 
         self.total_label.setStyleSheet("color: black;") # 초기 색상
         self.total_label.setAlignment(Qt.AlignCenter)
         
@@ -362,8 +366,10 @@ class Game3Screen(QWidget):
 
         # 타이틀 / 메뉴 버튼 레이아웃 (고정)
         top_h_layout = QHBoxLayout()
-        title = QLabel("60초 내에 가능한 한 많은 이모지를 따라 해보세요!")
-        title.setFont(QFont('Jalnan Gothic', 20))
+        title_font = QFont('Jalnan Gothic', 20)
+        title_font.setFamilies(['Jalnan Gothic', 'Jalnan Gothic TTF'])
+        title = QLabel("60초 동안 이모지 표정을 따라하여 점수를 획득하세요. 제한 시간 내에 가장 높은 점수를 획득하는 것이 목표입니다!")
+        title.setFont(title_font)
         title.setStyleSheet("background-color: 'transparent'; color: #292E32; padding-left: 20px; padding-top: 20px;")
         title.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
@@ -392,6 +398,7 @@ class Game3Screen(QWidget):
 
         # 타이머 레이블
         timer_font = QFont('Jalnan 2', 40)
+        timer_font.setFamilies(['Jalnan 2', 'Jalnan 2 TTF'])
         timer_fill_color = QColor("#0AB9FF")
         timer_outline_color = QColor("#00A4F3")
         timer_outline_width = 2.0
@@ -422,8 +429,11 @@ class Game3Screen(QWidget):
         center_stack_layout.setCurrentWidget(self.start_button)
         self.center_widget.setFixedSize(240, 240)
 
+        font_pass_btn = QFont('Jalnan 2', 24, QFont.Bold)
+        font_pass_btn.setFamilies(['Jalnan 2', 'Jalnan 2 TTF'])
+        
         self.pass_button = QPushButton("PASS") # 텍스트를 "PASS"로 변경
-        self.pass_button.setFont(QFont('Jalnan 2', 24, QFont.Bold))
+        self.pass_button.setFont(font_pass_btn)
         self.pass_button.setFixedSize(200, 70)
         self.pass_button.setStyleSheet("""
             QPushButton {
@@ -512,13 +522,18 @@ class Game3Screen(QWidget):
             self.success_overlay.setStyleSheet("font-size: 100px; color: green; background-color: rgba(0,0,0,100);")
 
         # Accuracy Labels
+        # self.current_accuracy_label 폰트 대체 적용
+        font_current_acc = QFont('Jalnan Gothic', 25)
+        font_current_acc.setFamilies(['Jalnan Gothic', 'Jalnan Gothic TTF'])       
         self.current_accuracy_label = QLabel(f'현재 유사도: {self.current_accuracy.value: .2f}%')
-        self.current_accuracy_label.setFont(QFont('Jalnan Gothic', 25))
+        self.current_accuracy_label.setFont(font_current_acc)
         self.current_accuracy_label.setStyleSheet("background-color: 'transparent'; color: #292E32; padding-top: 15px;")
         self.current_accuracy_label.setAlignment(Qt.AlignCenter)
 
+        font_target = QFont('Jalnan Gothic', 25)
+        font_target.setFamilies(['Jalnan Gothic', 'Jalnan Gothic TTF'])      
         self.target_label = QLabel(f'목표 유사도: {self.target_similarity:.0f}%')
-        self.target_label.setFont(QFont('Jalnan Gothic', 25))
+        self.target_label.setFont(font_target)
         self.target_label.setStyleSheet("background-color: 'transparent'; color: #292E32;")
         self.target_label.setAlignment(Qt.AlignCenter)
 
