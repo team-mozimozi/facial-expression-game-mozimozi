@@ -318,6 +318,7 @@ class Game3Screen(QWidget):
         self.target_similarity = 70.0
         self.is_transitioning = False
         self.transition_delay_ms  = 2000
+        self.pass_delay_ms  = 500
         self.total_game_time = 30
         self.time_left = self.total_game_time
         self.game_timer = QTimer(self)
@@ -599,7 +600,12 @@ class Game3Screen(QWidget):
         available_emotions = [f for f in self.emotion_files if f != self.current_emotion_file]
         if not available_emotions: available_emotions = self.emotion_files
         self.current_emotion_file = random.choice(available_emotions)
-        self.video_thread.set_emotion_file(self.current_emotion_file)
+        
+        #video_thread가 none인지 확인
+        if self.video_thread:
+            self.video_thread.set_emotion_file(self.current_emotion_file)
+        
+        
         file_path = os.path.join(self.EMOJI_DIR, self.current_emotion_file)
         pixmap = QPixmap(file_path)
         if pixmap.isNull():
@@ -620,7 +626,7 @@ class Game3Screen(QWidget):
             
         # 유사도 달성과 동일한 전환 로직 시작
         self.is_transitioning = True
-        QTimer.singleShot(self.transition_delay_ms, self.complete_transition) # 딜레이 후 다음 이모지로 전환
+        QTimer.singleShot(self.pass_delay_ms, self.complete_transition) # 딜레이 후 다음 이모지로 전환
 
     def update_timer(self):
         self.time_left -= 1
