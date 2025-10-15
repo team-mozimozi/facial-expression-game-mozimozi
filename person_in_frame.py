@@ -3,17 +3,12 @@ from ultralytics import YOLO
 import torch
 import numpy as np
 from matplotlib import pyplot as plt
-import pathlib
 
-temp = pathlib.PosixPath
-pathlib.PosixPath = pathlib.WindowsPath
-
-# model = YOLO("yolov5nu.pt")
-model = torch.hub.load("ultralytics/yolov5", "custom", "best.pt").cpu().eval()
+model = YOLO("yolov5nu.pt")
 
 def person_in_frame(frame):
     # model을 통해 객체 인식
-    results = model(frame, size=160) # 객체 여러 개 감지될 수 있음
+    results = model(frame, imgsz=320) # 객체 여러 개 감지될 수 있음
 
     # 감지된 결과를 하나씩 처리
     x_shape = frame.shape[1]
@@ -21,14 +16,16 @@ def person_in_frame(frame):
     
     max_area = 0
     target_box = None
-    boxes = results.xyxyn[0].numpy() # 해당 필드에는 x1, y1, x2, y2, conf, cls
+    result = results[0]
+    boxes = result.boxes # 해당 필드에는 x1, y1, x2, y2, conf, cls
+    
     for box in boxes:
-        x1, y1, x2, y2, conf, cls = box
-        x1, x2 = map(int, [x1 * x_shape, x2 * x_shape])
-        y1, y2 = map(int, [y1 * x_shape, y2 * x_shape])
+        x1, y1, x2, y2 = map(int, box.xyxy[0])
         area = (x2-x1) * (y2-y1)
+        cls_id = int(box.cls[0])
+        class_name = model.names[cls_id]
 
-        if area > max_area:
+        if area > max_area and class_name == "person":
             max_area = area
             target_box = (x1, y1, x2, y2)
 
