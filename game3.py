@@ -328,7 +328,8 @@ class Game3Screen(QWidget):
         self.target_similarity = 70.0
         self.is_transitioning = False
         self.transition_delay_ms  = 2000
-        self.total_game_time = 5
+        self.pass_delay_ms  = 500
+        self.total_game_time = 30
         self.time_left = self.total_game_time
         self.game_timer = QTimer(self)
         self.game_timer.timeout.connect(self.update_timer)
@@ -389,7 +390,7 @@ class Game3Screen(QWidget):
         top_h_layout = QHBoxLayout()
         title_font = QFont('Jalnan Gothic', 20)
         title_font.setFamilies(['Jalnan Gothic', 'Jalnan Gothic TTF'])
-        title = QLabel("60초 동안 이모지 표정을 따라하여 점수를 획득하세요. 제한 시간 내에 가장 높은 점수를 획득하는 것이 목표입니다!")
+        title = QLabel("30초 동안 이모지 표정을 따라하여 점수를 획득하세요. 제한 시간 내에 가장 높은 점수를 획득하는 것이 목표입니다!")
         title.setFont(title_font)
         title.setStyleSheet("background-color: 'transparent'; color: #292E32; padding-left: 20px; padding-top: 20px;")
         title.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
